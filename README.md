@@ -12,7 +12,13 @@ $ sudo apt-get update
 $ sudo apt-get install python3-pip
 ```
 
-## Install torch and torchvision
+## Install torch and torchvision (Intel)
+
+```Shell
+$ pip3 install torch torchvision 
+```
+
+## Install torch and torchvision (ARM)
 ```Shell
 $ git clone https://github.com/Ben-Faessler/Python3-Wheels.git
 $ sudo pip3 install Python3-Wheels/pytorch/torch-1.5.0a0+4ff3872-cp37-cp37m-linux_armv7l.whl
