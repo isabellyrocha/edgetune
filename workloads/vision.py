@@ -36,8 +36,8 @@ import time
 import torch
 from torchvision import datasets, transforms as T, models as models
 import torch.onnx
-import onnx
-import onnxruntime
+#import onnx
+#import onnxruntime
 from tqdm import tqdm
 
 # minimal training loop
@@ -114,7 +114,7 @@ if not args.baseline_mem:
 
 loader = torch.utils.data.DataLoader(
     datasets.CIFAR10(
-        ".cache/", transform=T.Compose([T.Resize(args.size), T.CenterCrop(int(args.size * 224 / 256)), T.ToTensor()])
+        ".cache/", download=True, transform=T.Compose([T.Resize(args.size), T.CenterCrop(int(args.size * 224 / 256)), T.ToTensor()])
     ),
     batch_size=args.batch,
 )
