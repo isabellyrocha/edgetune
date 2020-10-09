@@ -9,3 +9,8 @@ Cores   | 4 | 4 | 4 | 4
 CPU Frequency | 600 MHz - 1.50 GHz | 600 MHz - 1.50 GHz | 700 MHz - 1.40 GHz | 400 MHz - 4.00 GHz
 Memory  | 3906 MB | 3906 MB | 925 MB | 15769 MB
 SSD     | 256 GB | - | - | -
+
+## Inferece Results
+
+
+## ONNX Inference Results
