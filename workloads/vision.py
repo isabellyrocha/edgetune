@@ -36,8 +36,8 @@ import time
 import torch
 from torchvision import datasets, transforms as T, models as models
 import torch.onnx
-#import onnx
-#import onnxruntime
+import onnx
+import onnxruntime
 from tqdm import tqdm
 
 # minimal training loop
