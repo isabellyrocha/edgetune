@@ -29,6 +29,7 @@ mnasnet1_0         | 45.9  |  45.9 | 66.8  | 10.3
 ## Inferece (Max Frequency, batch size = 64)
 
 - Scaling CPU frequency reduces time by ~half.
+- Longer running inferences benefit more from scaling when using the nuc.
 
 network            | chasseral          | chaumont           | vully              | nuc
 ------------------ | ------------------ | ------------------ | ------------------ | ------------------
