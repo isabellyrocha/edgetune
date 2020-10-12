@@ -31,3 +31,9 @@ $ sudo pip3 install Python3-Wheels/torchvision/torchvision-0.6.0a0+b68adcf-cp37-
 $ sudo apt-get install linux-cpupower
 $ sudo apt-get install linux-tools-5.4.0-48-generic linux-cloud-tools-5.4.0-48-generic
 ```
+
+# Install requirements for PyRAPL measurements
+
+```Shell
+$ python3 -m pip install pybluez
+```
