@@ -35,5 +35,5 @@ $ sudo apt-get install linux-tools-5.4.0-48-generic linux-cloud-tools-5.4.0-48-g
 # Install requirements for PyRAPL measurements
 
 ```Shell
-$ python3 -m pip install pybluez
+$ pip3 install pyRAPL
 ```
