@@ -2,47 +2,22 @@
 Run training, inference, or ONNX inference of torchvision models
 """
 
-import time
-
-print("init")
-
 import argparse
-
-arguments = argparse.ArgumentParser()
-arguments.add_argument(
-    "--model",
-    default="resnet18",
-    choices=[
-        "resnet18",
-        "alexnet",
-        "vgg16",
-        "squeezenet1_0",
-        "shufflenet_v2_x1_0",
-        "mobilenet_v2",
-        "resnext50_32x4d",
-        "wide_resnet50_2",
-        "mnasnet1_0",
-    ],
-)
-arguments.add_argument("--function", default="train", choices=["train", "inference", "onnx_inference"])
-arguments.add_argument("--time", default=1, type=int)
-arguments.add_argument("--batch", default=32, type=int)
-arguments.add_argument("--size", default=256, type=int)
-arguments.add_argument("--baseline_mem", default=False, action="store_true")
-args = arguments.parse_args()
-
 import os
 import time
 import torch
 from torchvision import datasets, transforms as T, models as models
 import torch.onnx
 import onnx
-import onnxruntime
+#import onnxruntime
 from tqdm import tqdm
+import pyRAPL # for energy measurements
 
 # minimal training loop
 # training continues until args.time amount of seconds of the forward pass has been gathered
 def train(loader, model):
+    meter = pyRAPL.Measurement('metrics')
+    meter.begin()
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
     model.train()
@@ -66,11 +41,13 @@ def train(loader, model):
             optimizer.step()
 
             if fwd_time > args.time:
-                return
-
+                meter.end()
+                return meter.result
 
 @torch.no_grad()  # disable gradients
 def inference(loader, model):
+    meter = pyRAPL.Measurement('metrics')
+    meter.begin()
     model.eval()
     fwd_time = 0
     pbar = tqdm(total=args.time)
@@ -86,11 +63,13 @@ def inference(loader, model):
             fwd_time += elapsed
             pbar.update(elapsed)
             if fwd_time > args.time:
-                return
-
+                meter.end()
+                return meter.result
 
 @torch.no_grad()
 def onnx_inference(loader, ort_session):
+    meter = pyRAPL.Measurement('metrics')
+    meter.begin()
     fwd_time = 0
     pbar = tqdm(total=args.time)
     while fwd_time < args.time:
@@ -106,44 +85,71 @@ def onnx_inference(loader, ort_session):
             fwd_time += elapsed
             pbar.update(elapsed)
             if fwd_time > args.time:
-                return
+                meter.end()
+                return meter.result
 
+if __name__ == "__main__":
+    arguments = argparse.ArgumentParser()
+    arguments.add_argument(
+        "--model",
+        default="resnet18",
+        choices=[
+            "resnet18",
+            "alexnet",
+            "vgg16",
+            "squeezenet1_0",
+            "shufflenet_v2_x1_0",
+            "mobilenet_v2",
+            "resnext50_32x4d",
+            "wide_resnet50_2",
+            "mnasnet1_0",
+        ],
+    )
+    arguments.add_argument("--function", default="train", choices=["train", "inference", "onnx_inference"])
+    arguments.add_argument("--time", default=1, type=int)
+    arguments.add_argument("--batch", default=32, type=int)
+    arguments.add_argument("--size", default=256, type=int)
+    arguments.add_argument("--baseline_mem", default=False, action="store_true")
+    args = arguments.parse_args()
 
-if not args.baseline_mem:
-    model = models.__dict__[args.model]()
+    if not args.baseline_mem:
+        model = models.__dict__[args.model]()
 
-loader = torch.utils.data.DataLoader(
-    datasets.CIFAR10(
-        ".cache/", download=True, transform=T.Compose([T.Resize(args.size), T.CenterCrop(int(args.size * 224 / 256)), T.ToTensor()])
-    ),
-    batch_size=args.batch,
-)
+    loader = torch.utils.data.DataLoader(
+        datasets.CIFAR10(
+            ".cache/", download=True, transform=T.Compose([T.Resize(args.size), T.CenterCrop(int(args.size * 224 / 256)), T.ToTensor()])
+        ),
+        batch_size=args.batch,
+    )
 
-if args.function == "train":
-    fn = train
-elif args.function == "inference":
-    fn = inference
-elif args.function == "onnx_inference":
-    fn = onnx_inference
-    onnx_model_path = f"results/onnx/{args.model}_batch{args.batch}_size{args.size}.onnx"
-    if not os.path.exists(onnx_model_path):
-        # see https://pytorch.org/tutorials/advanced/super_resolution_with_onnxruntime.html for more info on ONNX
-        torch.onnx.export(
-            model,
-            torch.randn(
-                size=(args.batch, 3, int(args.size * 224 / 256), int(args.size * 224 / 256)), requires_grad=False
-            ),
-            onnx_model_path,
-            export_params=True,
-            opset_version=11,
-            do_constant_folding=True,
-            input_names=["input"],
-            output_names=["output"],
-            dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
-        )
-    onnx_model = onnx.load(onnx_model_path)
-    onnx.checker.check_model(onnx_model)
-    model = onnxruntime.InferenceSession(onnx_model_path)
+    pyRAPL.setup()
 
-if not args.baseline_mem:
-    fn(loader, model)
+    if args.function == "train":
+        fn = train
+    elif args.function == "inference":
+        fn = inference
+    elif args.function == "onnx_inference":
+        fn = onnx_inference
+        onnx_model_path = f"results/onnx/{args.model}_batch{args.batch}_size{args.size}.onnx"
+        if not os.path.exists(onnx_model_path):
+            # see https://pytorch.org/tutorials/advanced/super_resolution_with_onnxruntime.html for more info on ONNX
+            torch.onnx.export(
+                model,
+                torch.randn(
+                    size=(args.batch, 3, int(args.size * 224 / 256), int(args.size * 224 / 256)), requires_grad=False
+                ),
+                onnx_model_path,
+                export_params=True,
+                opset_version=11,
+                do_constant_folding=True,
+                input_names=["input"],
+                output_names=["output"],
+                dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
+            )
+            onnx_model = onnx.load(onnx_model_path)
+            onnx.checker.check_model(onnx_model)
+            model = onnxruntime.InferenceSession(onnx_model_path)
+
+    if not args.baseline_mem:
+        result = fn(loader, model)
+        print(result)
