@@ -2,19 +2,19 @@
 
 ## Architectures
 
-Machine | chasseral | chaumont | vully | nuc
-------- | --------- | -------- | ----- | ---
-Model   | ARMv7 Processor rev 4 (v7l) | ARMv7 Processor rev 4 (v7l) | Raspberry Pi 3 Model B Plus Rev 1.3 | Intel(R) Core(TM) i7-7567U CPU
-Cores   | 4 | 4 | 4 | 4
-CPU Frequency | 600 MHz - 1.50 GHz | 600 MHz - 1.50 GHz | 700 MHz - 1.40 GHz | 400 MHz - 4.00 GHz
-Memory  | 3.8Gi | 3.8Gi | 925Mi | 15Gi
-SSD     | 256 GB | - | - | -
+Machine | chasseral | chaumont | vully | nuc | scopi
+------- | --------- | -------- | ----- | --- | -----
+Model   | ARMv7 Processor rev 4 (v7l) | ARMv7 Processor rev 4 (v7l) | Raspberry Pi 3 Model B Plus Rev 1.3 | Intel(R) Core(TM) i7-7567U CPU | ARMv8 Processor rev 1 (v8l)
+Cores   | 4 | 4 | 4 | 4 | 4
+CPU Frequency | 600 MHz - 1.50 GHz | 600 MHz - 1.50 GHz | 700 MHz - 1.40 GHz | 400 MHz - 4.00 GHz | -
+Memory  | 4GB | 4GB | 1GB | 16GB | 4GB
+SSD     | 256 GB | - | - | - | -
 
 ## Inferece (Min Frequency, batch size = 64)
 
 - nuc < Chasseral ~ Chaumont < vully 
 
-network            | chasseral          | chaumont           | vully              | nuc
+network            | chasseral          | chaumont           | vully              | nuc                
 ------------------ | ------------------ | ------------------ | ------------------ | ------------------
 resnet18           | 24.8  | 26.4  | 40.2  | 15.2
 alexnet            | 8.1   | 8.1  | 13.0 | 5.3
