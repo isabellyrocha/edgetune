@@ -12,6 +12,7 @@ import onnx
 #import onnxruntime
 from tqdm import tqdm
 import pyRAPL # for energy measurements
+import numpy as np
 
 # minimal training loop
 # training continues until args.time amount of seconds of the forward pass has been gathered
@@ -55,7 +56,7 @@ def inference(loader, model):
         for (images, target) in loader:
             start = time.time()
 
-            print("forward")
+            #print("forward")
             out = model(images)
             _, pred = torch.max(out.data, 1)
 
@@ -152,4 +153,4 @@ if __name__ == "__main__":
 
     if not args.baseline_mem:
         result = fn(loader, model)
-        print(result)
+        print("%s,%d,%f,%f,%f" % (args.model, args.batch, result.duration/1000000, np.sum(result.pkg)/1000000, np.sum(result.dram)/1000000))
