@@ -55,11 +55,11 @@ Classification
 - Wide ResNet (2)
   - wide_resnet50_2
   - wide_resnet101_2
-- MNASNet
-  - mnasnet0_5
-  - mnasnet0_75
-  - mnasnet1_0
-  - mnasnet1_3
+- MNASNet (4)
+  - mnasnet0_5: depth multiplier of 0.5. 
+  - mnasnet0_75: depth multiplier of 0.75.
+  - mnasnet1_0: depth multiplier of 1.0. 
+  - mnasnet1_3: MNASNet with depth multiplier of 1.3.
 
 ## Inferece (Min Frequency, batch size = 64)
 
