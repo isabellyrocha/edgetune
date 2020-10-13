@@ -36,5 +36,6 @@ $ cpufreq-set -u min -d max # set cpu frequency
 # Install requirements for PyRAPL measurements
 
 ```Shell
+$ pip3 install pymongo pandas
 $ pip3 install pyRAPL
 ```
