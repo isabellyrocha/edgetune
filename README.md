@@ -30,7 +30,7 @@ $ sudo pip3 install Python3-Wheels/torchvision/torchvision-0.6.0a0+b68adcf-cp37-
 ```Shell
 $ sudo apt-get install linux-cpupower
 $ cpufreq-info              # get cpu frequency information
-# cpufreq-set -u min -d max # set cpu frequency
+$ cpufreq-set -u min -d max # set cpu frequency
 ```
 
 # Install requirements for PyRAPL measurements
