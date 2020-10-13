@@ -6,7 +6,7 @@ Machine | chasseral | chaumont | vully | nuc | scopi
 ------- | --------- | -------- | ----- | --- | -----
 Model   | ARMv7 Processor rev 4 (v7l) | ARMv7 Processor rev 4 (v7l) | Raspberry Pi 3 Model B Plus Rev 1.3 | Intel(R) Core(TM) i7-7567U CPU | ARMv8 Processor rev 1 (v8l)
 Cores   | 4 | 4 | 4 | 4 | 4
-CPU Frequency | 600 MHz - 1.50 GHz | 600 MHz - 1.50 GHz | 700 MHz - 1.40 GHz | 400 MHz - 4.00 GHz | -
+CPU Frequency | 600 MHz - 1.50 GHz | 600 MHz - 1.50 GHz | 700 MHz - 1.40 GHz | 400 MHz - 4.00 GHz | 100 MHz - 1.5 GHZ
 Memory  | 4GB | 4GB | 1GB | 16GB | 4GB
 SSD     | 256 GB | - | - | - | -
 
