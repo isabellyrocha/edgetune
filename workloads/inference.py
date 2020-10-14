@@ -12,21 +12,21 @@ import torch.onnx
 import onnx
 #import onnxruntime
 from tqdm import tqdm
-import pyRAPL # for energy measurements
+#import pyRAPL # for energy measurements
 import numpy as np
 
 @torch.no_grad()  # disable gradients
 def inference(loader, model):
-    meter = pyRAPL.Measurement('metrics')
-    meter.begin()
+#    meter = pyRAPL.Measurement('metrics')
+#    meter.begin()
     model.eval()
     images,target = next(iter(loader))
     out = model(images)
     _, pred = torch.max(out.data, 1)
     print(pred)
     model.eval()
-    meter.end()
-    return meter.result
+    #meter.end()
+    return #meter.result
 
 if __name__ == "__main__":
     classification_models = [
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     ]
 
 
-    pyRAPL.setup()
+#    pyRAPL.setup()
 
     for model_name in classification_models:
         model = models.__dict__[model_name](pretrained=True)
@@ -111,5 +111,6 @@ if __name__ == "__main__":
         )
 
         result = inference(loader, model)
-        print("%s,cifar100,32,%f,%f,%f" % (model_name, result.duration/1000000, np.sum(result.pkg)/1000000, np.sum(result.dram)/1000000))
+        print("%s,cifar100" % model_name)
+#        print("%s,cifar100,32,%f,%f,%f" % (model_name, result.duration/1000000, np.sum(result.pkg)/1000000, np.sum(result.dram)/1000000))
 
