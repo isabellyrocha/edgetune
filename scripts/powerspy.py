@@ -18,7 +18,8 @@
 #
 # You should have received a copy of the Lesser GNU Lesser General Public License
 # along with powerspy.py.  If not, see <http://www.gnu.org/licenses/>.
-
+from influxdb import InfluxDBClient
+from datetime import datetime
 import logging
 import bluetooth
 import struct  # conversion of type
@@ -27,6 +28,7 @@ import math    # sqrt
 import signal  # signal handler
 import sys     # system exit
 import time    # sleep/time
+import errno   # IOError numbers
 
 # All powerspy commands
 CMD_ID = '?'
@@ -59,7 +61,7 @@ CMD_FAILED = 'Z'
 running = True
 
 # Constants
-DEFAULT_TIMEOUT = 3.0 # secs (float allowed, timeout to receive response from PowerSpy)
+DEFAULT_TIMEOUT = 3.0 # secs (float allowed, timeout to receive response from PowerSpy, except in realtime mode)
 DEFAULT_INTERVAL = 1.0 # secs (float allowed, interval between each output)
 
 class PowerSpy:
@@ -74,6 +76,27 @@ class PowerSpy:
     self.uscale_factory = self.iscale_factory = self.pscale_factory = None
     self.uscale_current = self.iscale_current = self.pscale_current = None
     self.frequency = None
+    self.max_avg_period = None
+
+  def get_nodename(self, address):
+    switch = {
+      "00:06:66:4D:F4:C6": "scopi",
+      "00:06:66:4D:F5:F3": "nuc"
+    }
+    return switch.get(address, None)
+
+  def get_json(self, nodename, timestamp, power):
+    json_body = [{
+        "measurement": "power/node_utilization",
+        "tags": {
+            "nodename": nodename,
+        },
+        "time": timestamp,
+        "fields": {
+            "value": power
+        }
+    }]
+    return json_body
 
   def connect(self, address):
     if self.sock != None:
@@ -99,6 +122,7 @@ class PowerSpy:
     self.sock.sendall(buf)
 
   def recvCmd(self, size = 1):
+    global running
     assert(self.sock != None)
     # All powerspy commands are tagged with < >
     buf = ""
@@ -107,10 +131,16 @@ class PowerSpy:
         r = self.sock.recv(size)
         # then read one by one
         size = 1
-      except bluetooth.btcommon.BluetoothError as error:
-        # TODO probably timeout but there is no specific exception for it
-        logging.warning("Maybe timeout? %s" % error)
-        break
+      # TODO: fix in case of multiple ctrl+c
+      except bluetooth.btcommon.BluetoothError as err:
+        # damn BluetoothError
+        err = eval(err[0])
+        if err[0] == errno.EAGAIN:
+          logging.debug("EAGAIN due to signal interrupt. Try to quit.")
+          running = False
+        else: # TODO probably timeout but there is no specific exception for it
+          logging.warning("Maybe timeout? %s" % err)
+          break
       # FIXME what to do for multiple message? keep it in buffer...
       buf = "%s%s" % (buf,r)
       mat = re.search('<(.*)>', buf, re.MULTILINE)
@@ -142,7 +172,6 @@ class PowerSpy:
     self.hw_serial      = extra[8:12] # HW serial number (2 bytes / 4 characters)
     logging.debug('status: %s pll_locked: %s trigger_status: %s sw_version: %s hw_version: %s hw_serial: %s' % (self.status, self.pll_locked, self.trigger_status, self.sw_version, self.hw_version, self.hw_serial))
     return True
-
 
   # Read EEPROM float (values: must be an array of 4 elements)
   def get_eeprom_float(self, values):
@@ -214,6 +243,12 @@ class PowerSpy:
     self.calc_pscale()
     logging.debug("uscale_factory:%.8f iscale_factory:%.8f pscale_factory:%.8f" % (self.uscale_factory, self.iscale_factory, self.pscale_factory))
     logging.debug("uscale_current:%.8f iscale_current:%.8f pscale_current:%.8f" % (self.uscale_current, self.iscale_current, self.pscale_current))
+    if self.hw_version == "02":
+      # PowerSpy v1 supports 100 averaging periods.
+      self.max_avg_period = 100
+    else:
+      # PowerSpy v2 (assuming all other versions) supports 65535 averaging periods.
+      self.max_avg_period = 65535
     return True
 
   # deinitialize the PowerSpy device and close the serial port
@@ -229,6 +264,9 @@ class PowerSpy:
     if a != CMD_OK:
       logging.error('CMD_START FAILED')
       return False
+    # Switching to acquisition mode requires some time
+    # FIXME Ask alciom how long should we wait
+    time.sleep(0.1)
     return True
 
   def acquisition_stop(self):
@@ -240,15 +278,17 @@ class PowerSpy:
     #  return False
     return True
 
-  # Start real time monitoring with specific interval
+  # Start real time monitoring with the specified averaging periods
   # rt_stop() must be called if the function succeed
-  def rt_start(self, interval = DEFAULT_INTERVAL):
-    # big interval will make the timeout to be reached
-    if interval >= DEFAULT_TIMEOUT:
-       logging.warning("Consider increasing the timeout value or decrease the interval")
-    # Convert the interval using frequency to find the averaging periods
-    avg_period = int(interval * self.frequency)
-    # TODO check if not overflow 255 for v1 and 65535 for v2
+  def rt_start(self, avg_period):
+    # Change the socket timeout to wait at least the interval plus the default timeout
+    interval = avg_period / self.frequency
+    self.sock.settimeout(interval + DEFAULT_TIMEOUT)
+    # Check if exceeded number of avg_period
+    if avg_period > self.max_avg_period:
+      logging.error('Your PowerSpy does not support %d averaging periods (only %d).' % (avg_period, max_avg_period))
+      return False
+    # Encoding of the J command is different between v1 and v2
     if self.hw_version == "02":
       # PowerSpy v1 (hw_version == "02") format for CMD_RT <JXX>
       self.sendCmd("%s%02X" % (CMD_RT, avg_period))
@@ -259,10 +299,6 @@ class PowerSpy:
       logging.error('CMD_RT FAILED')
       return False
     return True
-
-  # Display the column header for rt_read()
-  def rt_cols(self):
-    print("# timestamp\tV\tA\tW\tV\tA")
 
   # Read monitored values and display them
   def rt_read(self):
@@ -303,12 +339,12 @@ class PowerSpy:
     pvoltage = self.uscale_current * conv[3]
     pcurrent = self.iscale_current * conv[4]
 
-    print("%0.3f\t%0.3f\t%0.3f\t%0.3f\t%0.3f\t%0.3f" % (time.time(), voltage, current, power, pvoltage, pcurrent))
-
-    return [voltage, current, power, pvoltage, pcurrent]
+    return voltage, current, power, pvoltage, pcurrent
 
   # Stop the real time monitoring
   def rt_stop(self):
+    # Reset the timeout to default
+    self.sock.settimeout(DEFAULT_TIMEOUT)
     # TODO can check status before to stop
     self.sendCmd(CMD_RT_STOP)
     # flush input because it can have still data to read
@@ -321,6 +357,66 @@ class PowerSpy:
         return True
     return True
 
+  # Display measurements every interval (sec) for the specified duration (sec)
+  # If interval is higher than the PowerSpy device capacity, it will be an average of the averaged PowerSpy measurements
+  def rt_capture(self, address, interval = 1.0, duration = 0.0):
+    if not self.acquisition_start():
+      logging.error('Acquisition failed')
+      return
+    # Convert the interval using frequency to find the averaging periods
+    avg_period = int(round(interval * self.frequency))
+    if avg_period > self.max_avg_period:
+      logging.warning('PowerSpy capacity exceeded: it will be average of averaged values for one second.')
+      avg_period = int(round(self.frequency))
+      every = int(round(interval))
+    else:
+      every = 0
+    if not self.rt_start(avg_period):
+      logging.error('Realtime acquisition failed')
+      self.acquisition_stop()
+      return
+    endsat = time.time() + duration
+    print("# timestamp\tV\tA\tW\tV\tA")
+    # TODO to pythonify
+    voltages = []
+    currents = []
+    powers = []
+    pvoltages = []
+    pcurrents = []
+    try:
+      client = InfluxDBClient('localhost', 8086, 'root', 'root', 'power')
+      while (running and (duration == 0.0 or time.time() < endsat)):
+        voltage, current, power, pvoltage, pcurrent = self.rt_read()
+        # TODO should we check if rt_read returns [0,0,0,0,0] or None?
+        if every != 0:
+          voltages.append(voltage)
+          currents.append(current)
+          powers.append(power)
+          pvoltages.append(pvoltage)
+          pcurrents.append(pcurrent)
+          if len(voltages) != every:
+            continue
+          voltage = sum(voltages) / float(len(voltages))
+          current = sum(currents) / float(len(currents))
+          power = sum(powers) / float(len(powers))
+          pvoltage = max(pvoltages)
+          pcurrent = max(pcurrents)
+          voltages = []
+          currents = []
+          powers = []
+          pvoltages = []
+          pcurrents = []
+ 
+        json_body = self.get_json(self.get_nodename(address), datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'), power) 
+        client.write_points(json_body)
+        #print(time.time(),self.get_nodename(address), power)
+        #print("%0.3f\t%0.3f\t%0.3f\t%0.3f\t%0.3f\t%0.3f" % (time.time(), voltage, current, power, pvoltage, pcurrent))
+    except Exception as e:
+      logging.error("Realtime capture failed (%s)" % e)
+    finally:
+      self.rt_stop()
+      self.acquisition_stop()
+
 # Signal handler to exit properly on SIGINT
 def exit_gracefully(signal, frame):
   global running
@@ -331,9 +427,10 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Alciom PowerSpy reader.')
   # TODO can add mac address checker and normalizer
   parser.add_argument('device_mac', metavar='MAC', help='MAC address of the PowerSpy device.')
-  parser.add_argument('-i', '--interval', type=float, default=1.0, help='Interval between each measurement.')
   parser.add_argument('-v', '--verbose', action='count', help='Verbose mode.')
-  parser.add_argument('-t', '--time', type=int, default=0, help='Time of execution (seconds). 0 means running indefinitely.')
+  parser.add_argument('-i', '--interval', type=float, default=1.0, help='Interval between each measurement.')
+  parser.add_argument('-t', '-d', '--time', '--duration', type=float, default=0.0, help='Duration of execution (seconds). 0 means running indefinitely.')
+  parser.add_argument('-T', '--timeout', type=float, default=0.0, help='Maxiumum duration to get an answer from the device (seconds).')
   # in case of release
   #parser.add_argument('--version', action='version', version='%(prog)s unreleased')
   args = parser.parse_args()
@@ -345,6 +442,9 @@ if __name__ == '__main__':
   signal.signal(signal.SIGINT, exit_gracefully)
 
   dev = PowerSpy()
+  if args.timeout:
+    DEFAULT_TIMEOUT = args.timeout
+
   if args.device_mac == "simulator":
     import powerspysimulator
     dev.sock = powerspysimulator.Simulator()
@@ -359,17 +459,8 @@ if __name__ == '__main__':
   if not dev.init():
     print("Device cannot be initialized")
     sys.exit(1)
-  dev.acquisition_start()
-  # Wait at least the interval to get enough values
-  time.sleep(args.interval)
-  dev.rt_start(args.interval)
 
-  dev.rt_cols()
-  endsat = time.time() + args.time
-  while (running and (args.time == 0 or time.time() < endsat)):
-    dev.rt_read()
-  dev.rt_stop()
-  dev.acquisition_stop()
+  dev.rt_capture(args.device_mac, args.interval, args.time)
+
   dev.close()
-
 

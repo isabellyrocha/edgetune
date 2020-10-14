@@ -15,9 +15,10 @@ import numpy as np
 def inference(loader, model):
     start = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
     model.eval()
-    images,target = next(iter(loader))
-    out = model(images)
-    _, pred = torch.max(out.data, 1)
+    for i in range(10):
+        images,target = next(iter(loader))
+        out = model(images)
+        _, pred = torch.max(out.data, 1)
     finish = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
     return (start, finish)
 
