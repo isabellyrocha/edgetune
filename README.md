@@ -33,9 +33,20 @@ $ cpufreq-info              # get cpu frequency information
 $ cpufreq-set -u min -d max # set cpu frequency
 ```
 
-# Install requirements for PyRAPL measurements
+## Install requirements for PyRAPL measurements
 
 ```Shell
 $ pip3 install pymongo pandas
 $ pip3 install pyRAPL
+```
+
+## Power Measurements Setup
+
+# InfluxDB
+
+```Shell
+$ sudo apt install influxdb
+$ service influxdb start
+$ influx
+$ CREATE DATABASE power
 ```
