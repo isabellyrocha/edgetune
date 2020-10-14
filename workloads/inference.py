@@ -1,7 +1,4 @@
-"""
-Run training, inference, or ONNX inference of torchvision models
-"""
-
+from datetime import datetime
 import argparse
 import os
 import time
@@ -12,21 +9,17 @@ import torch.onnx
 import onnx
 #import onnxruntime
 from tqdm import tqdm
-#import pyRAPL # for energy measurements
 import numpy as np
 
 @torch.no_grad()  # disable gradients
 def inference(loader, model):
-#    meter = pyRAPL.Measurement('metrics')
-#    meter.begin()
+    start = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
     model.eval()
     images,target = next(iter(loader))
     out = model(images)
     _, pred = torch.max(out.data, 1)
-    print(pred)
-    model.eval()
-    #meter.end()
-    return #meter.result
+    finish = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+    return (start, finish)
 
 if __name__ == "__main__":
     classification_models = [
@@ -54,17 +47,13 @@ if __name__ == "__main__":
             "googlenet",
             "shufflenet_v2_x0_5",
             "shufflenet_v2_x1_0",
-#            "shufflenet_v2_x1_5",
-#            "shufflenet_v2_x2_0",
             "mobilenet_v2",
             "resnext50_32x4d",
             "resnext101_32x8d",
             "wide_resnet50_2",
             "wide_resnet101_2",
             "mnasnet0_5",
-#            "mnasnet0_75",
             "mnasnet1_0",
-#            "mnasnet1_3"
     ]
 
     segmentation_models = [
@@ -87,31 +76,25 @@ if __name__ == "__main__":
             "r2plus1d_18"
     ]
 
-
-#    pyRAPL.setup()
-
     for model_name in classification_models:
         model = models.__dict__[model_name](pretrained=True)
     
         loader = torch.utils.data.DataLoader(
             datasets.CIFAR10(
-                root=".cache/", train=False, download=True , transform=T.Compose([T.Resize(256), T.CenterCrop(int(256 * 224 / 256)), T.ToTensor()])
+                root=".cache/", train=False, download=False, transform=T.Compose([T.Resize(256), T.CenterCrop(int(256 * 224 / 256)), T.ToTensor()])
             ),
             batch_size=32
         )
 
         result = inference(loader, model)
-        print("%s,cifar10" % model_name)
-        #print("%s,cifar10,32,%f,%f,%f" % (model_name, result.duration/1000000, np.sum(result.pkg)/1000000, np.sum(result.dram)/1000000))
+        print("%s,cifar10,%s,%s" % (model_name, result[0], result[1]))
 
         loader = torch.utils.data.DataLoader(
             datasets.CIFAR100(
-                root=".cache/", train=False, download=True , transform=T.Compose([T.Resize(256), T.CenterCrop(int(256 * 224 / 256)), T.ToTensor()])
+                root=".cache/", train=False, download=False , transform=T.Compose([T.Resize(256), T.CenterCrop(int(256 * 224 / 256)), T.ToTensor()])
             ),
             batch_size=32
         )
 
         result = inference(loader, model)
-        print("%s,cifar100" % model_name)
-#        print("%s,cifar100,32,%f,%f,%f" % (model_name, result.duration/1000000, np.sum(result.pkg)/1000000, np.sum(result.dram)/1000000))
-
+        print("%s,cifar100,%s,%s" % (model_name, result[0], result[1]))
