@@ -101,7 +101,8 @@ if __name__ == "__main__":
         )
 
         result = inference(loader, model)
-        print("%s,cifar10,32,%f,%f,%f" % (model_name, result.duration/1000000, np.sum(result.pkg)/1000000, np.sum(result.dram)/1000000))
+        print("%s,cifar10" % model_name)
+        #print("%s,cifar10,32,%f,%f,%f" % (model_name, result.duration/1000000, np.sum(result.pkg)/1000000, np.sum(result.dram)/1000000))
 
         loader = torch.utils.data.DataLoader(
             datasets.CIFAR100(
