@@ -1,9 +1,3 @@
-#####################################
-# Requirement: apt-get install expect
-# Powering up: ./poe -u -p $PORT
-# Powering down: ./poe -d -p $PORT
-######################################
-
 #!/bin/bash
 
 POEUSER="iiun"
@@ -57,94 +51,86 @@ send -- "exit\r"
 send -- "exit\r"
 END
 }
-
-
 poe-filter()
 {
-	poe-read "$1" | grep 0/ | grep -v "status" | cut -d/ -f2 | sed 's/Open Circuit/OpenCircuit/' | tr -d "\r"
+    poe-read "$1" | grep 0/ | grep -v "status" | cut -d/ -f2 | sed 's/Open Circuit/OpenCircuit/' | tr -d "\r"
 }
-
 poe-json()
 {
-	awk 'BEGIN { print "\"poe\": [" } \
-		{ print "    { \"interface\": "$1", \"detection\": \""$2\
-		"\", \"class\": \""$3"\", \"consumed\": "$4\
-		", \"voltage\": "$5", \"current\": "$6\
-		", \"temperature\": "$7" }"} \
-		END { print "]" }'
+    awk 'BEGIN { print "\"poe\": [" } \
+        { print "    { \"interface\": "$1", \"detection\": \""$2\
+        "\", \"class\": \""$3"\", \"consumed\": "$4\
+        ", \"voltage\": "$5", \"current\": "$6\
+        ", \"temperature\": "$7" }"} \
+        END { print "]" }'
 }
-
 poe-csv()
 {
-	awk '{ print $1","$2","$3","$4","$5","$6","$7 }'
+    awk '{ print $1","$2","$3","$4","$5","$6","$7 }'
 }
-
 usage()
 {
-	echo "usage:"
-	echo "  $0 [-j|-c|-u|-d] [-p port]"
-	echo "     -c        List status in CSV format (default)"
-	echo "     -j        List status in JSON format"
-	echo "     -u        Turns on (up) port (needs -p)"
-	echo "     -d        Turns off (down) port (needs -p)"
-	echo "     -p port   Selects port to operate"
-	exit 0
+    echo "usage:"
+    echo "  $0 [-j|-c|-u|-d] [-p port]"
+    echo "     -c        List status in CSV format (default)"
+    echo "     -j        List status in JSON format"
+    echo "     -u        Turns on (up) port (needs -p)"
+    echo "     -d        Turns off (down) port (needs -p)"
+    echo "     -p port   Selects port to operate"
+    exit 0
 }
-
 error()
 {
-	echo "$1"
-	exit 1
+    echo "$1"
+    exit 1
 }
-
 OPC=csv
 PORT=""
 while test $# -gt 0; do
-	case "$1" in
-	-j)
-		OPC=json
-		;;
-	-c)
-		OPC=csv
-		;;
-	-u)
-		OPC=up
-		;;
-	-d)
-		OPC=down
-		;;
-	-p)
-		PORT="$2"
-		shift
-		;;
-	*)
-		usage
-		;;
-	esac
-	shift
+    case "$1" in
+    -j)
+        OPC=json
+        ;;
+    -c)
+        OPC=csv
+        ;;
+    -u)
+        OPC=up
+        ;;
+    -d)
+        OPC=down
+        ;;
+    -p)
+        PORT="$2"
+        shift
+        ;;
+    *)
+        usage
+        ;;
+    esac
+    shift
 done
-
 if test "a$PORT" = a; then
-	if test "a$OPC" = aup -o "a$OPC" = adown; then
-		error "options -s and -r must use -p <port>"
-	else
-		PORT=all
-	fi
+    if test "a$OPC" = aup -o "a$OPC" = adown; then
+        error "options -s and -r must use -p <port>"
+    else
+        PORT=all
+    fi
 else
-	PORT="0/$PORT"
+    PORT="0/$PORT"
 fi
-
 case "$OPC" in
 json)
-	poe-filter "$PORT" | poe-json
-	;;
+    poe-filter "$PORT" | poe-json
+    ;;
 csv)
-	poe-filter "$PORT" | poe-csv
-	;;
+    poe-filter "$PORT" | poe-csv
+    ;;
 up)
-	poe-set "$PORT" auto
-	;;
+    poe-set "$PORT" auto
+    ;;
 down)
-	poe-set "$PORT" shutdown
-	;;
+    poe-set "$PORT" shutdown
+    ;;
 esac
+
