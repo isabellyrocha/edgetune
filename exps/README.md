@@ -45,8 +45,6 @@ Classification
 - ShuffleNet v2 (4)
   - shufflenet_v2_x0_5
   - shufflenet_v2_x1_0
-  - shufflenet_v2_x1_5
-  - shufflenet_v2_x2_0
 - MobileNet v2 (1)
   - mobilenet_v2: Constructs a MobileNetV2 architecture from “MobileNetV2: Inverted Residuals and Linear Bottlenecks”.
 - ResNeXt (2)
@@ -57,9 +55,7 @@ Classification
   - wide_resnet101_2
 - MNASNet (4)
   - mnasnet0_5: depth multiplier of 0.5. 
-  - mnasnet0_75: depth multiplier of 0.75.
   - mnasnet1_0: depth multiplier of 1.0. 
-  - mnasnet1_3: MNASNet with depth multiplier of 1.3.
 
 ## Inferece (Min Frequency, batch size = 64)
 
