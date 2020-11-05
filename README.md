@@ -28,12 +28,15 @@ $ sudo pip3 install Python3-Wheels/torchvision/torchvision-0.6.0a0+b68adcf-cp37-
 
 - Jetson Nano
 ```Shell
-$ wget https://nvidia.box.com/shared/static/mmu3xb3sp4o8qg9tji90kkxl1eijjfc6.whl -O torch-1.1.0-cp36-cp36m-linux_aarch64.whl
-$ pip3 install numpy torch-1.1.0-cp36-cp36m-linux_aarch64.whl
+$ wget https://nvidia.box.com/shared/static/wa34qwrwtk9njtyarwt5nvo6imenfy26.whl -O torch-1.7.0-cp36-cp36m-linux_aarch64.whl
+$ sudo apt-get install python3-pip libopenblas-base libopenmpi-dev 
+$ pip3 install Cython
+$ pip3 install numpy torch-1.7.0-cp36-cp36m-linux_aarch64.whl
 $ sudo apt-get install libjpeg-dev zlib1g-dev
-$ git clone -b v0.3.0 https://github.com/pytorch/vision torchvision
+$ git clone --branch v0.8.1 https://github.com/pytorch/vision torchvision 
 $ cd torchvision
-$ sudo python setup.py install
+$ export BUILD_VERSION=0.8.1 
+$ sudo python3 setup.py install
 ```
 
 ## Install cpupower (for frequency scaling)
