@@ -57,18 +57,18 @@ $ influx
 $ CREATE DATABASE power
 ```
 
-- POE Power
+- PowerSpy Power
 ```Shell
 $ pip install influxdb
 $ python powerspy.py MAC
 ```
 
-- PowerSpy Power
+- POE Power
 ```Shell
 $ apt-get install python-bluez bluez
 $ hcitool scan 
 $ hcitool dev 
-$ sudo restart bluetooth
+$ systemctl restart bluetooth.service
 $ pip3 install influxdb
 $ python3 poe_power.py -p PORT
 ```
