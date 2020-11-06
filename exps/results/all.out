@@ -136,6 +136,8 @@ vully,densenet121,cifar10,638,21350.780000
 vully,densenet121,cifar100,644,21001.475000
 vully,densenet169,cifar10,828,27859.970000
 vully,densenet169,cifar100,832,27688.725000
+vully,densenet201,cifar10,1169,39019.230000
+vully,densenet201,cifar100,1156,39004.400000
 vully,inception_v3,cifar10,482,16443.925000
 vully,inception_v3,cifar100,481,16999.640000
 vully,googlenet,cifar10,231,7693.770000
