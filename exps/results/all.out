@@ -134,6 +134,8 @@ vully,squeezenet1_1,cifar10,90,2979.465000
 vully,squeezenet1_1,cifar100,90,2950.075000
 vully,densenet121,cifar10,638,21350.780000
 vully,densenet121,cifar100,644,21001.475000
+vully,densenet169,cifar10,828,27859.970000
+vully,densenet169,cifar100,832,27688.725000
 scopi,alexnet,cifar10,20,719.460749
 scopi,alexnet,cifar100,20,748.872635
 scopi,vgg11,cifar10,119,8806.117648
