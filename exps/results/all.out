@@ -143,6 +143,13 @@ vully,googlenet,cifar100,230,7552.115000
 vully,shufflenet_v2_x0_5,cifar10,48,1497.950000
 vully,shufflenet_v2_x0_5,cifar100,50,1543.885000
 vully,shufflenet_v2_x1_0,cifar10,101,3283.685000
+vully,shufflenet_v2_x1_0,cifar100,100,3215.150000
+vully,mobilenet_v2,cifar10,202,6522.570000
+vully,mobilenet_v2,cifar100,200,6324.475000
+vully,mnasnet0_5,cifar10,101,3334.995000
+vully,mnasnet0_5,cifar100,101,3325.500000
+vully,mnasnet1_0,cifar10,205,6898.650000
+vully,mnasnet1_0,cifar100,204,6605.705000
 scopi,alexnet,cifar10,20,719.460749
 scopi,alexnet,cifar100,20,748.872635
 scopi,vgg11,cifar10,119,8806.117648
