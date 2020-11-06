@@ -10,12 +10,12 @@ ggplot(all, aes(x=device, y=duration, fill = database)) +
            position=position_dodge()) + 
   theme_bw() + theme(axis.title.x = element_blank(), legend.position="top") + ylab("Duration [s]") +
   facet_wrap(~ network, ncol = 4, scales = "free_y")
-ggsave("~/Documents/edgetune/exps/plots/duration.pdf", width = 40, height = 50, units = "cm")
+ggsave("~/Documents/edgetune/exps/plots/duration.png", width = 40, height = 50, units = "cm")
 
 ggplot(all, aes(x=device, y=energy, fill = database)) + 
   geom_bar(stat="identity", color="black", 
            position=position_dodge()) + 
   theme_bw() + theme(axis.title.x = element_blank(), legend.position="top") + ylab("Energy [J]") +
   facet_wrap(~ network, ncol = 4, scales = "free_y")
-ggsave("~/Documents/edgetune/exps/plots/energy.pdf", width = 40, height = 50, units = "cm")
+ggsave("~/Documents/edgetune/exps/plots/energy.png", width = 40, height = 50, units = "cm")
 
