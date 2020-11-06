@@ -57,6 +57,11 @@ Classification
   - mnasnet0_5: depth multiplier of 0.5. 
   - mnasnet1_0: depth multiplier of 1.0. 
 
+## Models
+
+- CIFAR100
+- CIFAR10
+
 ## Performance Measurements
 
 ![alt text](https://github.com/isabellyrocha/edgetune/blob/main/exps/plots/duration.png?raw=true)
