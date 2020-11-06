@@ -46,7 +46,7 @@ if __name__ == "__main__":
         "--node", type=str, help="Node name.", default="scopi")
     args, _ = parser.parse_known_args()
 
-    with open("%s/edgetune/workloads/results/%s.out" % (Path.home(), args.node)) as f:
+    with open("%s/edgetune/exps/results/%s.out" % (Path.home(), args.node)) as f:
         line = f.readline()
         while line:
             network,dataset,start,end = line.rstrip().split(",")
