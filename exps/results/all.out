@@ -1,7 +1,7 @@
 chasseral,alexnet,cifar10,21,1795.600000
 chasseral,alexnet,cifar100,22,1836.545000
 chasseral,vgg11,cifar10,139,11860.400000
-chasseral,1vgg11,cifar100,139,11904.870000
+chasseral,vgg11,cifar100,139,11904.870000
 chasseral,vgg11_bn,cifar10,168,13819.020000
 chasseral,vgg11_bn,cifar100,168,14285.425000
 chasseral,vgg13,cifar10,206,17884.275000
