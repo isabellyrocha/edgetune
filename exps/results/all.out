@@ -192,7 +192,7 @@ scopi,mnasnet1_0,cifar10,76,2871.632683
 scopi,mnasnet1_0,cifar100,76,2867.756828
 nuc,alexnet,cifar10,3,407.771082
 nuc,alexnet,cifar100,3,414.611143
-nuc,vim vgg11,cifar10,36,4980.812586
+nuc,vgg11,cifar10,36,4980.812586
 nuc,vgg11,cifar100,35,4909.580283
 nuc,vgg11_bn,cifar10,39,5403.421606
 nuc,vgg11_bn,cifar100,39,5411.737108
