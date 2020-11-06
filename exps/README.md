@@ -57,8 +57,10 @@ Classification
   - mnasnet0_5: depth multiplier of 0.5. 
   - mnasnet1_0: depth multiplier of 1.0. 
 
-## Performance and Energy
+## Performance Measurements
 
 ![alt text](https://github.com/isabellyrocha/edgetune/blob/main/exps/plots/duration.png?raw=true)
+
+## Energy Measurements
 
 ![alt text](https://github.com/isabellyrocha/edgetune/blob/main/exps/plots/energy.png?raw=true)
