@@ -16,6 +16,9 @@ import tensorflow_datasets as tfds
 from tensorflow import keras
 from tensorflow.keras import layers
 
+tf.config.threading.set_inter_op_parallelism_threads(1)
+tf.config.threading.set_intra_op_parallelism_threads(1)
+
 class MyTrainableClass(tune.Trainable):
     """Example agent whose learning curve is a random sigmoid.
     The dummy hyperparameters "width" and "height" determine the slope and
@@ -35,6 +38,9 @@ class MyTrainableClass(tune.Trainable):
         v *= self.config.get("height", 1)
         time.sleep(0.1)
 
+#        tf.config.threading.set_inter_op_parallelism_threads(4)
+#        tf.config.threading.set_intra_op_parallelism_threads(4)
+
         # Here we use `episode_reward_mean`, but you can also report other
         # objectives such as loss or accuracy.
         inputs = keras.Input(shape=(784,), name="digits")
@@ -46,11 +52,10 @@ class MyTrainableClass(tune.Trainable):
         optimizer = keras.optimizers.SGD(learning_rate=1e-3)
         loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-
         train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
         val_acc_metric = keras.metrics.SparseCategoricalAccuracy()
 
-        batch_size = 64
+        batch_size = 32
         (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
         x_train = np.reshape(x_train, (-1, 784))
         x_test = np.reshape(x_test, (-1, 784))
@@ -69,6 +74,7 @@ class MyTrainableClass(tune.Trainable):
         epochs = 3
         for epoch in range(epochs):
             print("\nStart of epoch %d" % (epoch,))
+            epoch_tim = time.time()
             fwd_time = 0
             for step, (x_batch_train, y_batch_train) in enumerate(train_dataset):
                 start = time.time()
@@ -84,7 +90,8 @@ class MyTrainableClass(tune.Trainable):
                 if step % 200 == 0:
                     print("Training loss (for one batch) at step %d: %.4f" % (step, float(loss_value)))
                     print("Seen so far: %s samples" % ((step + 1) * batch_size))
-            print(fwd_time)
+            print("Forward: %f\n" % fwd_time)
+            print("Epoch: %f\n" % (time.time() - epoch_tim))
 
         train_acc = train_acc_metric.result()
         train_acc_metric.reset_states()
@@ -93,6 +100,7 @@ class MyTrainableClass(tune.Trainable):
             val_logits = model(x_batch_val, training=False)
             val_acc_metric.update_state(y_batch_val, val_logits)
         val_acc = val_acc_metric.result()
+        print(val_acc)
         val_acc_metric.reset_states()
         elapsed = time.time() - start
         print("Inference: %f\n" % elapsed)
@@ -114,8 +122,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--smoke-test", action="store_true", help="Finish quickly for testing")
     args, _ = parser.parse_known_args()
-    ray.init(num_cpus=4 if args.smoke_test else None)
+    #os.system("taskset -p -c 0,1 %d" % os.getpid())
+    ray.init(num_cpus=1)
 
+    #tf.config.threading.set_inter_op_parallelism_threads(2)
+    #tf.config.threading.set_intra_op_parallelism_threads(2)
     # Hyperband early stopping, configured with `episode_reward_mean` as the
     # objective and `training_iteration` as the time unit,
     # which is automatically filled by Tune.
@@ -135,5 +146,5 @@ if __name__ == "__main__":
         verbose=1,
         scheduler=hyperband,
         fail_fast=True)
-
+ 
     print("Best hyperparameters found were: ", analysis.best_config)
