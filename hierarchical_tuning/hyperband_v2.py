@@ -38,8 +38,8 @@ class MyTrainableClass(tune.Trainable):
         v *= self.config.get("height", 1)
         time.sleep(0.1)
 
-#        tf.config.threading.set_inter_op_parallelism_threads(4)
-#        tf.config.threading.set_intra_op_parallelism_threads(4)
+        tf.config.threading.set_inter_op_parallelism_threads(8)
+        tf.config.threading.set_intra_op_parallelism_threads(8)
 
         # Here we use `episode_reward_mean`, but you can also report other
         # objectives such as loss or accuracy.
@@ -123,14 +123,14 @@ if __name__ == "__main__":
         "--smoke-test", action="store_true", help="Finish quickly for testing")
     args, _ = parser.parse_known_args()
     #os.system("taskset -p -c 0,1 %d" % os.getpid())
-    ray.init(num_cpus=1)
+    ray.init(num_cpus=8)
 
     #tf.config.threading.set_inter_op_parallelism_threads(2)
     #tf.config.threading.set_intra_op_parallelism_threads(2)
     # Hyperband early stopping, configured with `episode_reward_mean` as the
     # objective and `training_iteration` as the time unit,
     # which is automatically filled by Tune.
-    hyperband = HyperBandScheduler(time_attr="training_iteration", max_t=1)
+    hyperband = HyperBandScheduler(time_attr="training_iteration", max_t=8)
 
     analysis = tune.run(
         MyTrainableClass,
