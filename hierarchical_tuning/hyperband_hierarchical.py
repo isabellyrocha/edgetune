@@ -32,14 +32,10 @@ class MyTrainableClass(tune.Trainable):
 
     def step(self):
         self.timestep += 1
-        #v = np.tanh(float(self.timestep) / self.config.get("width", 1))
-        #v *= self.config.get("height", 1)
-        #time.sleep(0.1)
+
         tf.config.threading.set_inter_op_parallelism_threads(8)
         tf.config.threading.set_intra_op_parallelism_threads(8)
 
-        # Here we use `episode_reward_mean`, but you can also report other
-        # objectives such as loss or accuracy.
         inputs = keras.Input(shape=(784,), name="digits")
         x1 = layers.Dense(64, activation="relu")(inputs)
         x2 = layers.Dense(64, activation="relu")(x1)
@@ -52,9 +48,11 @@ class MyTrainableClass(tune.Trainable):
         train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
         val_acc_metric = keras.metrics.SparseCategoricalAccuracy()
         
+        #### Setting configurations ####
         self.set_cores(self.config.get("cores", 4))
         batch_size = self.config.get("batch", 128)
         print("Using bach size %d..." % self.config.get("batch", 128))
+        
         (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
         x_train = np.reshape(x_train, (-1, 784))
         x_test = np.reshape(x_test, (-1, 784))
@@ -70,48 +68,59 @@ class MyTrainableClass(tune.Trainable):
         val_batch_size = 64
         val_dataset = val_dataset.batch(val_batch_size)
 
-
         epochs = 1
-        fwd_time = 0
         for epoch in range(epochs):
-            print("\nStart of epoch %d" % (epoch,))
-            epoch_tim = time.time()
-            fwd_time = 0
+            print("Start of epoch %d" % (epoch,))
+            epoch_start = time.time()
+            
+            aggregated_forward_duration = 0
+            steps = 0
             for step, (x_batch_train, y_batch_train) in enumerate(train_dataset):
-                start = time.time()
+                step_start = time.time()
                 with tf.GradientTape() as tape:
                     logits = model(x_batch_train, training=True)  # Logits for this minibatch
                     loss_value = loss_fn(y_batch_train, logits)
                 grads = tape.gradient(loss_value, model.trainable_weights)
-                elapsed = time.time() - start
-                fwd_time += elapsed
-                #print(elapsed)
+                step_duration = time.time() - step_start
+                aggregated_forward_duration += step_duration
+                steps += 1
+                
                 optimizer.apply_gradients(zip(grads, model.trainable_weights))
                 train_acc_metric.update_state(y_batch_train, logits)
+                
                 if step % 200 == 0:
                     print("Training loss (for one batch) at step %d: %.4f" % (step, float(loss_value)))
                     print("Seen so far: %s samples" % ((step + 1) * batch_size))
-            print(train_acc_metric.result())
-            print("Forward: %f\n" % fwd_time)
-            print("Epoch: %f\n" % (time.time() - epoch_tim))
+            
+            training_accuracy = float(train_acc_metric.result())
+            forward_duration = aggregated_forward_duration/steps
+            epoch_duration = time.time() - epoch_start
+            training_ratio = training_accuracy/forward_duration
+            
+            print("Training accuracy %f" % training_accuracy)
+            print("Forward duration: %f\n" % forward_duration)
+            print("Epoch duration: %f\n" % epoch_duration)
+            print("Training ratio: %f\n" % training_ratio)
 
-        
         train_acc = train_acc_metric.result()
-        ratio = float(train_acc)/fwd_time
-
         train_acc_metric.reset_states()
-        start = time.time()
+        
+        inference_start = time.time()
         for x_batch_val, y_batch_val in val_dataset:
             val_logits = model(x_batch_val, training=False)
             val_acc_metric.update_state(y_batch_val, val_logits)
-        val_acc = val_acc_metric.result()
-        print(val_acc)
+        
+        inference_accuracy = float(val_acc_metric.result())
         val_acc_metric.reset_states()
-        elapsed = time.time() - start
-        print("Inference: %f\n" % elapsed)
-        v = float(train_acc)/fwd_time
-        print("RAAAATIOOOOOOO" +str(v))
-        return {"ratio": ratio, "accuracy": float(train_acc), "duration": fwd_time}
+        
+        inference_duration = time.time() - inference_start
+        real_ratio = inference_accuracy/inference_duration
+
+        print("Inference accuracy: %f" % inference_accuracy)
+        print("Inference duration: %f" % inference_duration)
+        print("Real ratio: %f" % real_ratio)
+        
+        return {"training_accuracy": training_accuracy, "inference_accuracy": inference_accuracy, "forward_duration": forward_duration, "epoch_duration": epoch_duration, "inference_duration": inference_duration, "training_ratio": training_ratio, "real_ratio": real_ratio}
 
     def save_checkpoint(self, checkpoint_dir):
         path = os.path.join(checkpoint_dir, "checkpoint")
@@ -129,75 +138,67 @@ if __name__ == "__main__":
     parser.add_argument(
         "--smoke-test", action="store_true", help="Finish quickly for testing")
     args, _ = parser.parse_known_args()
-    #os.system("taskset -p -c 0,1 %d" % os.getpid())
+    
     ray.init(num_cpus=8)
 
-    begin_tuning = time.time()
 
-    #tf.config.threading.set_inter_op_parallelism_threads(2)
-    #tf.config.threading.set_intra_op_parallelism_threads(2)
-    # Hyperband early stopping, configured with `episode_reward_mean` as the
-    # objective and `training_iteration` as the time unit,
-    # which is automatically filled by Tune.
-    hyperband = HyperBandScheduler(time_attr="training_iteration", metric="accuracy", mode = "max", max_t=18)
+    tuning_start = time.time()
 
-    analysis = tune.run(
+    hyperband_phase1 = HyperBandScheduler(time_attr="training_ratio", metric="training_accuracy", mode = "max", max_t=18)
+
+    analysis_phase1 = tune.run(
         MyTrainableClass,
         name="hyperband_test",
-        num_samples=1, #if args.smoke_test else 200,
-        #metric="episode_reward_mean",
-        #mode="max",
-        stop={"training_iteration": 2},
+        num_samples=1,
+        stop={"training_iteration": 1},
         resources_per_trial={
             "cpu": 8,
             "gpu": 0
         },
         config={
-            #"cores": tune.grid_search([1, 2, 4])
             "batch": tune.grid_search([32, 64, 128])
         },
         verbose=1,
-        scheduler=hyperband,
+        scheduler=hyperband_phase1,
         fail_fast=True)
  
-    trials = analysis.trials
+    trials = analysis_phase1.trials
     for trial in trials:
         print(trial.config)
-        print (trial.metric_analysis['ratio'])
-    
-    best_batch = analysis.get_best_config(
-    metric="accuracy", mode="max")
+        print(trial.metric_analysis['training_accuracy'])
 
-    print("Best hyperparameters found were: ", best_batch)
+    best_config = analysis_phase1.get_best_config(metric="training_accuracy", mode="max")
+    print("Best hyperparameters found were: ", best_config)
 
 
-    hyperband_phase_2 = HyperBandScheduler(time_attr="training_iteration", metric="duration", mode = "min", max_t=18)
+    hyperband_phase2 = HyperBandScheduler(time_attr="training_ratio", metric="forward_duration", mode = "min", max_t=18)
 
-    analysis = tune.run(
+    analysis_phase1 = tune.run(
         MyTrainableClass,
         name="hyperband_test",
-        num_samples=1, #if args.smoke_test else 200,
-        #metric="episode_reward_mean",
-        #mode="max",
-        stop={"training_iteration": 2},
+        num_samples=1,
+        stop={"training_iteration": 1},
         resources_per_trial={
             "cpu": 8,
             "gpu": 0
         },
         config={
             "cores": tune.grid_search([1, 2, 4]),
-            "batch": tune.grid_search([best_batch['batch']])
+            "batch": tune.grid_search([best_config['batch']])
         },
         verbose=1,
-        scheduler=hyperband_phase_2,
+        scheduler=hyperband_phase1,
         fail_fast=True)
 
-    trials = analysis.trials
+    trials = analysis_phase1.trials
     for trial in trials:
         print(trial.config)
-        print (trial.metric_analysis['duration'])
-    print("Best hyperparameters found were: ", analysis.get_best_config(
-    metric="duration", mode="min"))
+        print(trial.metric_analysis['forward_duration'])
 
-    end_tuning = time.time()
-    print("Tuning time: %d" % (end_tuning-begin_tuning))
+    best_config = analysis_phase1.get_best_config(metric="forward_duration", mode="min")
+    print("Best hyperparameters found were: ", best_config)
+
+    tuning_duration = time.time() - tuning_start
+    print("Tuning duration: %d" % tuning_duration)
+
+
