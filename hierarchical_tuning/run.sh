@@ -1,4 +1,4 @@
 #!/bin/bash
 
 python3 hyperband_v2.py &
-taskset -pc 0-7 $!
+taskset -pc 0-3 $!

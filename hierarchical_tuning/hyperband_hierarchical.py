@@ -26,7 +26,7 @@ class MyTrainableClass(tune.Trainable):
         self.timestep = 0
     
     def set_cores(self, cores):
-        command = "ps -x | grep hyperband_v2 | awk '{print $1}' | while read line ; do sudo taskset -cp -pa 0-%d $line; done" % (int(cores)-1)
+        command = "ps -x | grep hyperband_hierarchical | awk '{print $1}' | while read line ; do sudo taskset -cp -pa 0-%d $line; done" % (int(cores)-1)
         subprocess.Popen(["ssh", "eiger-1.maas", command], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         print("Changed number of cores to %s... " % cores)
 
@@ -95,7 +95,10 @@ class MyTrainableClass(tune.Trainable):
             print("Forward: %f\n" % fwd_time)
             print("Epoch: %f\n" % (time.time() - epoch_tim))
 
+        
         train_acc = train_acc_metric.result()
+        ratio = float(train_acc)/fwd_time
+
         train_acc_metric.reset_states()
         start = time.time()
         for x_batch_val, y_batch_val in val_dataset:
@@ -108,7 +111,7 @@ class MyTrainableClass(tune.Trainable):
         print("Inference: %f\n" % elapsed)
         v = float(train_acc)/fwd_time
         print("RAAAATIOOOOOOO" +str(v))
-        return {"ratio": v}
+        return {"ratio": ratio, "accuracy": float(train_acc), "duration": fwd_time}
 
     def save_checkpoint(self, checkpoint_dir):
         path = os.path.join(checkpoint_dir, "checkpoint")
@@ -129,7 +132,6 @@ if __name__ == "__main__":
     #os.system("taskset -p -c 0,1 %d" % os.getpid())
     ray.init(num_cpus=8)
 
-
     begin_tuning = time.time()
 
     #tf.config.threading.set_inter_op_parallelism_threads(2)
@@ -137,7 +139,39 @@ if __name__ == "__main__":
     # Hyperband early stopping, configured with `episode_reward_mean` as the
     # objective and `training_iteration` as the time unit,
     # which is automatically filled by Tune.
-    hyperband = HyperBandScheduler(time_attr="training_iteration", metric="ratio", mode = "max", max_t=18)
+    hyperband = HyperBandScheduler(time_attr="training_iteration", metric="accuracy", mode = "max", max_t=18)
+
+    analysis = tune.run(
+        MyTrainableClass,
+        name="hyperband_test",
+        num_samples=1, #if args.smoke_test else 200,
+        #metric="episode_reward_mean",
+        #mode="max",
+        stop={"training_iteration": 2},
+        resources_per_trial={
+            "cpu": 8,
+            "gpu": 0
+        },
+        config={
+            #"cores": tune.grid_search([1, 2, 4])
+            "batch": tune.grid_search([32, 64, 128])
+        },
+        verbose=1,
+        scheduler=hyperband,
+        fail_fast=True)
+ 
+    trials = analysis.trials
+    for trial in trials:
+        print(trial.config)
+        print (trial.metric_analysis['ratio'])
+    
+    best_batch = analysis.get_best_config(
+    metric="accuracy", mode="max")
+
+    print("Best hyperparameters found were: ", best_batch)
+
+
+    hyperband_phase_2 = HyperBandScheduler(time_attr="training_iteration", metric="duration", mode = "min", max_t=18)
 
     analysis = tune.run(
         MyTrainableClass,
@@ -152,19 +186,18 @@ if __name__ == "__main__":
         },
         config={
             "cores": tune.grid_search([1, 2, 4]),
-            "batch": tune.grid_search([32, 64, 128])
+            "batch": tune.grid_search([best_batch['batch']])
         },
         verbose=1,
-        scheduler=hyperband,
+        scheduler=hyperband_phase_2,
         fail_fast=True)
- 
+
     trials = analysis.trials
     for trial in trials:
         print(trial.config)
-        print (trial.metric_analysis['ratio'])
+        print (trial.metric_analysis['duration'])
     print("Best hyperparameters found were: ", analysis.get_best_config(
-    metric="ratio", mode="max"))
+    metric="duration", mode="min"))
 
     end_tuning = time.time()
-
-    print("Tuning duration: %d" % (end_tuning-begin_tuning))
+    print("Tuning time: %d" % (end_tuning-begin_tuning))
