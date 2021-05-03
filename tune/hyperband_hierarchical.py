@@ -65,7 +65,7 @@ class MyTrainableClass(tune.Trainable):
         train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
 
         val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
-        val_batch_size = 64
+        val_batch_size = 2048
         val_dataset = val_dataset.batch(val_batch_size)
 
         epochs = 1
@@ -95,12 +95,12 @@ class MyTrainableClass(tune.Trainable):
             training_accuracy = float(train_acc_metric.result())
             forward_duration = aggregated_forward_duration/steps
             epoch_duration = time.time() - epoch_start
-            training_ratio = training_accuracy/forward_duration
+            proxy_ratio = training_accuracy/forward_duration
             
             print("Training accuracy %f" % training_accuracy)
             print("Forward duration: %f\n" % forward_duration)
             print("Epoch duration: %f\n" % epoch_duration)
-            print("Training ratio: %f\n" % training_ratio)
+            print("Proxy ratio: %f\n" % proxy_ratio)
 
         train_acc = train_acc_metric.result()
         train_acc_metric.reset_states()
@@ -120,7 +120,7 @@ class MyTrainableClass(tune.Trainable):
         print("Inference duration: %f" % inference_duration)
         print("Real ratio: %f" % real_ratio)
         
-        return {"training_accuracy": training_accuracy, "inference_accuracy": inference_accuracy, "forward_duration": forward_duration, "epoch_duration": epoch_duration, "inference_duration": inference_duration, "training_ratio": training_ratio, "real_ratio": real_ratio}
+        return {"training_accuracy": training_accuracy, "inference_accuracy": inference_accuracy, "forward_duration": forward_duration, "epoch_duration": epoch_duration, "inference_duration": inference_duration, "proxy_ratio": proxy_ratio, "real_ratio": real_ratio}
 
     def save_checkpoint(self, checkpoint_dir):
         path = os.path.join(checkpoint_dir, "checkpoint")

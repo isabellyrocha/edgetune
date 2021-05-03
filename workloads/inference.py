@@ -6,55 +6,65 @@ import torch
 import torchvision
 from torchvision import datasets, transforms as T, models as models
 import torch.onnx
-import onnx
+#import onnx
 #import onnxruntime
 from tqdm import tqdm
 import numpy as np
 
 @torch.no_grad()  # disable gradients
 def inference(loader, model):
-    start = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+#    start = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+    start = time.time()
     model.eval()
+    
     for i in range(10):
         images,target = next(iter(loader))
         out = model(images)
         _, pred = torch.max(out.data, 1)
-    finish = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
-    return (start, finish)
+    
+    #dataset_iter = iter(loader)
+    #for indices in batch_sampler:
+    
+    #    images,target = ([next(dataset_iter) for _ in indices])
+    #    out = model(images)
+
+#    finish = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+#    return (start, finish)
+    return time.time() - start
 
 if __name__ == "__main__":
     classification_models = [
-            "alexnet",
+#            "alexnet",
             "vgg11",
-            "vgg11_bn",
+#            "vgg11_bn",
             "vgg13",
-            "vgg13_bn",
+#            "vgg13_bn",
             "vgg16",
-            "vgg16_bn",
+#            "vgg16_bn",
             "vgg19",
-            "vgg19_bn",
+#            "vgg19_bn",
             "resnet18",
             "resnet34",
             "resnet50",
             "resnet101",
             "resnet152",
-            "squeezenet1_0",
-            "squeezenet1_1",
-            "densenet121",
-            "densenet169",
-            "densenet161",
-            "densenet201",
-            "inception_v3",
-            "googlenet",
-            "shufflenet_v2_x0_5",
-            "shufflenet_v2_x1_0",
-            "mobilenet_v2",
-            "resnext50_32x4d",
-            "resnext101_32x8d",
-            "wide_resnet50_2",
-            "wide_resnet101_2",
-            "mnasnet0_5",
-            "mnasnet1_0",
+#            "squeezenet1_0",
+#            "squeezenet1_1",
+#            "densenet121",
+#            "densenet169",
+#            "densenet161",
+#            "densenet201",
+#            "inception_v3",
+#            "googlenet",
+#            "shufflenet_v2_x0_5",
+#            "shufflenet_v2_x1_0",
+#            "mobilenet_v2",
+#            "resnext50_32x4d",
+#            "resnext101_32x8d",
+#            "wide_resnet50_2",
+#            "wide_resnet101_2",
+#            "mnasnet0_5",
+#            "mnasnet1_0",
     ]
 
     segmentation_models = [
@@ -85,11 +95,14 @@ if __name__ == "__main__":
                 root=".cache/", train=False, download=False, transform=T.Compose([T.Resize(256), T.CenterCrop(int(256 * 224 / 256)), T.ToTensor()])
             ),
             batch_size=32
+            #batch_sampler=32
         )
 
         result = inference(loader, model)
-        print("%s,cifar10,%s,%s" % (model_name, result[0], result[1]))
 
+#       print("%s,cifar10,%s,%s" % (model_name, result[0], result[1]))
+        print("%s,%d" % (model_name, result))
+        '''
         loader = torch.utils.data.DataLoader(
             datasets.CIFAR100(
                 root=".cache/", train=False, download=False , transform=T.Compose([T.Resize(256), T.CenterCrop(int(256 * 224 / 256)), T.ToTensor()])
@@ -99,3 +112,4 @@ if __name__ == "__main__":
 
         result = inference(loader, model)
         print("%s,cifar100,%s,%s" % (model_name, result[0], result[1]))
+        '''

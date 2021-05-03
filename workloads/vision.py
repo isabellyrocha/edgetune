@@ -8,7 +8,7 @@ import time
 import torch
 from torchvision import datasets, transforms as T, models as models
 import torch.onnx
-import onnx
+#import onnx
 #import onnxruntime
 from tqdm import tqdm
 import pyRAPL # for energy measurements

@@ -65,9 +65,8 @@ class MyTrainableClass(tune.Trainable):
         train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
 
         val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
-        val_batch_size = 64
+        val_batch_size = 10000
         val_dataset = val_dataset.batch(val_batch_size)
-
         epochs = 1
         for epoch in range(epochs):
             print("Start of epoch %d" % (epoch,))
@@ -95,12 +94,12 @@ class MyTrainableClass(tune.Trainable):
             training_accuracy = float(train_acc_metric.result())
             forward_duration = aggregated_forward_duration/steps
             epoch_duration = time.time() - epoch_start
-            training_ratio = training_accuracy/forward_duration
+            proxy_ratio = training_accuracy/forward_duration
             
             print("Training accuracy %f" % training_accuracy)
             print("Forward duration: %f\n" % forward_duration)
             print("Epoch duration: %f\n" % epoch_duration)
-            print("Training ratio: %f\n" % training_ratio)
+            print("Proxy ratio: %f\n" % proxy_ratio)
 
         train_acc = train_acc_metric.result()
         train_acc_metric.reset_states()
@@ -108,6 +107,7 @@ class MyTrainableClass(tune.Trainable):
         inference_start = time.time()
         for x_batch_val, y_batch_val in val_dataset:
             val_logits = model(x_batch_val, training=False)
+            #print(val_logits)
             val_acc_metric.update_state(y_batch_val, val_logits)
         
         inference_accuracy = float(val_acc_metric.result())
@@ -120,7 +120,7 @@ class MyTrainableClass(tune.Trainable):
         print("Inference duration: %f" % inference_duration)
         print("Real ratio: %f" % real_ratio)
         
-        return {"training_accuracy": training_accuracy, "inference_accuracy": inference_accuracy, "forward_duration": forward_duration, "epoch_duration": epoch_duration, "inference_duration": inference_duration, "training_ratio": training_ratio, "real_ratio": real_ratio}
+        return {"training_accuracy": training_accuracy, "inference_accuracy": inference_accuracy, "forward_duration": forward_duration, "epoch_duration": epoch_duration, "inference_duration": inference_duration, "proxy_ratio": proxy_ratio, "real_ratio": real_ratio}
 
     def save_checkpoint(self, checkpoint_dir):
         path = os.path.join(checkpoint_dir, "checkpoint")
@@ -144,7 +144,7 @@ if __name__ == "__main__":
 
     tuning_start = time.time()
 
-    hyperband = HyperBandScheduler(time_attr="training_ratio", metric="training_ratio", mode = "max", max_t=18)
+    hyperband = HyperBandScheduler(time_attr="training_ratio", metric="proxy_ratio", mode = "max", max_t=18)
 
     analysis = tune.run(
         MyTrainableClass,
@@ -156,8 +156,8 @@ if __name__ == "__main__":
             "gpu": 0
         },
         config={
-            "cores": tune.grid_search([1, 2, 4]),
-            "batch": tune.grid_search([32, 64, 128])
+            "cores": tune.grid_search([4]),
+            "batch": tune.grid_search([32])
         },
         verbose=1,
         scheduler=hyperband,
@@ -166,9 +166,10 @@ if __name__ == "__main__":
     trials = analysis.trials
     for trial in trials:
         print(trial.config)
-        print(trial.metric_analysis['training_ratio'])
+        print(trial.metric_analysis['proxy_ratio'])
+        print(trial.metric_analysis['real_ratio'])
 
-    best_config = analysis.get_best_config(metric="training_ratio", mode="max")
+    best_config = analysis.get_best_config(metric="proxy_ratio", mode="max")
     print("Best hyperparameters found were: ", best_config)
 
     tuning_duration = time.time() - tuning_start
