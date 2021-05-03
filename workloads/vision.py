@@ -17,38 +17,61 @@ import numpy as np
 # minimal training loop
 # training continues until args.time amount of seconds of the forward pass has been gathered
 def train(loader, model):
-    meter = pyRAPL.Measurement('metrics')
-    meter.begin()
+#    meter = pyRAPL.Measurement('metrics')
+#    meter.begin()
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
     model.train()
     fwd_time = 0
     pbar = tqdm(total=args.time)
-    while fwd_time < args.time:
-        for (images, target) in loader:
-            start = time.time()
 
-            print("forward")  # workloads should print the phase they are in when starting them
-            out = model(images)
-            loss = criterion(out, target)
-
-            elapsed = time.time() - start
-            fwd_time += elapsed
-            pbar.update(elapsed)
-
-            print("backward")
+    epochs = 1
+    for epoch in range(epochs):
+        running_loss = 0.0
+        for i, data in enumerate(loader, 0):
+            inputs, labels = data
             optimizer.zero_grad()
+
+            # forward + backward + optimize
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
 
-            if fwd_time > args.time:
-                meter.end()
-                return meter.result
+            # print statistics
+            running_loss += loss.item()
+            if i % 2000 == 1999:    # print every 2000 mini-batches
+                print('[%d, %5d] loss: %.3f' %
+                      (epoch + 1, i + 1, running_loss / 2000))
+                running_loss = 0.0
+
+
+
+
+        #for (images, target) in loader:
+        #    start = time.time()
+
+        #    print("forward")  # workloads should print the phase they are in when starting them
+        #    out = model(images)
+        #    loss = criterion(out, target)
+
+        #    elapsed = time.time() - start
+        #    fwd_time += elapsed
+        #    pbar.update(elapsed)
+
+        #    print("backward")
+        #    optimizer.zero_grad()
+        #    loss.backward()
+        #    optimizer.step()
+
+#            if fwd_time > args.time:
+#                meter.end()
+#                return meter.result
 
 @torch.no_grad()  # disable gradients
 def inference(loader, model):
-    meter = pyRAPL.Measurement('metrics')
-    meter.begin()
+    #meter = pyRAPL.Measurement('metrics')
+    #meter.begin()
     model.eval()
     fwd_time = 0
     pbar = tqdm(total=args.time)
@@ -63,9 +86,9 @@ def inference(loader, model):
             elapsed = time.time() - start
             fwd_time += elapsed
             pbar.update(elapsed)
-            if fwd_time > args.time:
-                meter.end()
-                return meter.result
+#            if fwd_time > args.time:
+#                meter.end()
+#                return meter.result
 
 @torch.no_grad()
 def onnx_inference(loader, ort_session):
@@ -149,7 +172,7 @@ if __name__ == "__main__":
         batch_size=args.batch,
     )
 
-    pyRAPL.setup()
+    #pyRAPL.setup()
 
     if args.function == "train":
         fn = train
@@ -157,7 +180,7 @@ if __name__ == "__main__":
         fn = inference
     elif args.function == "onnx_inference":
         fn = onnx_inference
-        onnx_model_path = f"results/onnx/{args.model}_batch{args.batch}_size{args.size}.onnx"
+        onnx_model_path = "results/onnx/{args.model}_batch{args.batch}_size{args.size}.onnx"
         if not os.path.exists(onnx_model_path):
             # see https://pytorch.org/tutorials/advanced/super_resolution_with_onnxruntime.html for more info on ONNX
             torch.onnx.export(
