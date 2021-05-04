@@ -202,7 +202,7 @@ class MyTrainableClass(tune.Trainable):
         val_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
         val_batch_size = 32
         val_dataset = val_dataset.batch(val_batch_size)
-        epochs = 1
+        epochs = 10
         for epoch in range(epochs):
             print("Start of epoch %d" % (epoch,))
             epoch_start = time.time()
@@ -229,8 +229,8 @@ class MyTrainableClass(tune.Trainable):
             training_accuracy = float(train_acc_metric.result())
             forward_duration = aggregated_forward_duration/steps
             epoch_duration = time.time() - epoch_start
-            proxy_ratio = training_accuracy/forward_duration
-            
+            proxy_ratio = training_accuracy/(forward_duration + epoch_duration)
+
             print("Training accuracy %f" % training_accuracy)
             print("Forward duration: %f\n" % forward_duration)
             print("Epoch duration: %f\n" % epoch_duration)
@@ -279,11 +279,11 @@ if __name__ == "__main__":
 
     tuning_start = time.time()
 
-    hyperband = HyperBandScheduler(time_attr="training_accuracy", metric="training_accuracy", mode = "max", max_t=18)
+    hyperband = HyperBandScheduler(time_attr="proxy_ratio", metric="proxy_ratio", mode = "max", max_t=18)
 
     analysis = tune.run(
         MyTrainableClass,
-        name="hyperband_test",
+        name="edgetune_test",
         num_samples=1,
         stop={"training_iteration": 1},
         resources_per_trial={
@@ -302,10 +302,10 @@ if __name__ == "__main__":
     trials = analysis.trials
     for trial in trials:
         print(trial.config)
-        print(trial.metric_analysis['training_accuracy'])
-        print(trial.metric_analysis['inference_accuracy'])
+        print(trial.metric_analysis['proxy_ratio'])
+        print(trial.metric_analysis['proxy_ratio'])
 
-    best_config = analysis.get_best_config(metric="training_accuracy", mode="max")
+    best_config = analysis.get_best_config(metric="proxy_ratio", mode="max")
     print("Best hyperparameters found were: ", best_config)
 
     tuning_duration = time.time() - tuning_start
