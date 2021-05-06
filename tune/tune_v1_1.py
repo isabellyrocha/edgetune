@@ -29,7 +29,7 @@ class MyTrainableClass(tune.Trainable):
     
     def set_cores(self, cores):
         command = "ps -x | grep hyperband_onefold | awk '{print $1}' | while read line ; do sudo taskset -cp -pa 0-%d $line; done" % (int(cores)-1)
-        subprocess.Popen(["ssh", "eiger-1.maas", command], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.Popen(["ssh", "jolly.maas", command], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         print("Changed number of cores to %s... " % cores)
 
     def resnet_layer(self, inputs,
@@ -202,6 +202,7 @@ class MyTrainableClass(tune.Trainable):
         val_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
         val_batch_size = 32
         val_dataset = val_dataset.batch(val_batch_size)
+        training_duration = 0
         epochs = 1
         for epoch in range(epochs):
             print("Start of epoch %d" % (epoch,))
@@ -229,7 +230,8 @@ class MyTrainableClass(tune.Trainable):
             training_accuracy = float(train_acc_metric.result())
             forward_duration = aggregated_forward_duration/steps
             epoch_duration = time.time() - epoch_start
-            proxy_ratio = training_accuracy/forward_duration
+            training_duration += epoch_duration
+            proxy_ratio = training_accuracy/(forward_duration*epoch_duration)
             
             print("Training accuracy %f" % training_accuracy)
             print("Forward duration: %f\n" % forward_duration)
@@ -255,7 +257,7 @@ class MyTrainableClass(tune.Trainable):
         print("Inference duration: %f" % inference_duration)
         print("Real ratio: %f" % real_ratio)
         
-        return {"training_accuracy": training_accuracy, "inference_accuracy": inference_accuracy, "forward_duration": forward_duration, "epoch_duration": epoch_duration, "inference_duration": inference_duration, "proxy_ratio": proxy_ratio, "real_ratio": real_ratio}
+        return {"training_accuracy": training_accuracy, "inference_accuracy": inference_accuracy, "forward_duration": forward_duration, "training_duration": training_duration, "epoch_duration": epoch_duration, "inference_duration": inference_duration, "proxy_ratio": proxy_ratio, "real_ratio": real_ratio}
 
     def save_checkpoint(self, checkpoint_dir):
         path = os.path.join(checkpoint_dir, "checkpoint")
@@ -288,12 +290,12 @@ if __name__ == "__main__":
         stop={"training_iteration": 1},
         resources_per_trial={
             "cpu": 8,
-            "gpu": 0
+            "gpu": 1
         },
         config={
             "n": tune.grid_search([3, 5, 7]),
-            "cores": tune.grid_search([4]),
-            "batch": tune.grid_search([32])
+            "cores": tune.grid_search([8]),
+            "batch": tune.grid_search([1024])
         },
         verbose=1,
         scheduler=hyperband,
@@ -302,11 +304,18 @@ if __name__ == "__main__":
     trials = analysis.trials
     for trial in trials:
         print(trial.config)
-        print(trial.metric_analysis['training_accuracy'])
-        print(trial.metric_analysis['inference_accuracy'])
+        print("training_accuracy: " + str(trial.metric_analysis['training_accuracy']))
+        print("inference_accuracy: " + str(trial.metric_analysis['inference_accuracy']))
+        print("training_duration: " + str(trial.metric_analysis['training_duration']))
+        print("inference_duration: " + str(trial.metric_analysis['inference_duration']))
+        print("proxy_ratio: " + str(trial.metric_analysis['proxy_ratio']))
+        print("real_ratio: " + str(trial.metric_analysis['real_ratio']))
 
-    best_config = analysis.get_best_config(metric="training_accuracy", mode="max")
-    print("Best hyperparameters found were: ", best_config)
+    best_config_acc = analysis.get_best_config(metric="training_accuracy", mode="max")
+    print("Best hyperparameters found were [accuracy]: ", best_config_acc)
+
+    best_config_ratio = analysis.get_best_config(metric="proxy_ratio", mode="max")
+    print("Best hyperparameters found were [ratio]: ", best_config_ratio)
 
     tuning_duration = time.time() - tuning_start
     print("Tuning duration: %d" % tuning_duration)
