@@ -203,7 +203,7 @@ class MyTrainableClass(tune.Trainable):
         val_batch_size = 32
         val_dataset = val_dataset.batch(val_batch_size)
         training_duration = 0
-        epochs = 1
+        epochs = 200
         for epoch in range(epochs):
             print("Start of epoch %d" % (epoch,))
             epoch_start = time.time()
@@ -295,7 +295,7 @@ if __name__ == "__main__":
         config={
             "n": tune.grid_search([3, 5, 7]),
             "cores": tune.grid_search([8]),
-            "batch": tune.grid_search([1024])
+            "batch": tune.grid_search([64])
         },
         verbose=1,
         scheduler=hyperband,
