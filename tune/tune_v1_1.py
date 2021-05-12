@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import subprocess
+import resource
 import argparse
 import json
 import os
@@ -29,8 +30,16 @@ class MyTrainableClass(tune.Trainable):
     
     def set_cores(self, cores):
         command = "ps -x | grep hyperband_onefold | awk '{print $1}' | while read line ; do sudo taskset -cp -pa 0-%d $line; done" % (int(cores)-1)
-        subprocess.Popen(["ssh", "jolly.maas", command], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        print("Changed number of cores to %s... " % cores)
+        subprocess.Popen(["ssh", "eiger-1.maas", command], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        print("Changed number of cores to %d... " % cores)
+
+
+    def set_memory(self, memory):
+        #command = "ulimit -Sv %d000000" % memory
+        #subprocess.Popen(["ulimit -Sv %d000000" % memory], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #resource.setrlimit(resource.RLIMIT_VMEM, 1000000)
+        subprocess.Popen('ulimit -Sv %d000000' % memory, shell=True)
+        print("Changed memory to %dG... " % memory)
 
     def resnet_layer(self, inputs,
                      num_filters=16,
@@ -158,52 +167,34 @@ class MyTrainableClass(tune.Trainable):
         tf.config.threading.set_inter_op_parallelism_threads(8)
         tf.config.threading.set_intra_op_parallelism_threads(8)
 
-        inputs = keras.Input(shape=(784,), name="digits")
-        x1 = layers.Dense(64, activation="relu")(inputs)
-        x2 = layers.Dense(64, activation="relu")(x1)
-        x3 = layers.Dense(64, activation="relu")(x2)
-        outputs = layers.Dense(10, name="predictions")(x3)
- #       model = keras.Model(inputs=inputs, outputs=outputs)
-
-        num_classes = 10
+        ##### Setting training configurations #####
         n = self.config.get("n", 3)
-        depth = n * 6 + 2
+        model_depth = n * 6 + 2
+        train_batch = self.config.get("train_batch", 128)
+        self.set_cores(self.config.get("train_cores", 8))
+        self.set_memory(self.config.get("train_memory", 64))
+
+        ##### Dataset #####
         (x_train, y_train), (x_test, y_test) = cifar10.load_data()
         shape = x_train.shape[1:]
         x_train = x_train.astype('float32') / 255
         x_test = x_test.astype('float32') / 255
-#        y_train = keras.utils.to_categorical(y_train, num_classes)
-#        y_test = keras.utils.to_categorical(y_test, num_classes)
+        train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
+        train_dataset = train_dataset.shuffle(buffer_size=1024).batch(train_batch)
+        val_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
 
-        model = self.resnet_v1(input_shape=shape, depth=depth)
-
+        ##### Model #####
+        model = self.resnet_v1(input_shape=shape, depth=model_depth)
         optimizer = keras.optimizers.SGD(learning_rate=1e-3)
         loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
+
+        ##### Training #####
         train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
         val_acc_metric = keras.metrics.SparseCategoricalAccuracy()
         
-        #### Setting configurations ####
-        self.set_cores(self.config.get("cores", 4))
-        batch_size = self.config.get("batch", 128)
-        print("Using bach size %d..." % self.config.get("batch", 128))
-        
-#        (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
-#        x_train = np.reshape(x_train, (-1, 784))
-#        x_test = np.reshape(x_test, (-1, 784))
-#        x_val = x_train[-10000:]
-#        y_val = y_train[-10000:]
-#        x_train = x_train[:-10000]
-#        y_train = y_train[:-10000]
-
-        train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
-        train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
-
-        val_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
-        val_batch_size = 32
-        val_dataset = val_dataset.batch(val_batch_size)
         training_duration = 0
-        epochs = 200
+        epochs = 1
         for epoch in range(epochs):
             print("Start of epoch %d" % (epoch,))
             epoch_start = time.time()
@@ -225,7 +216,7 @@ class MyTrainableClass(tune.Trainable):
                 
                 if step % 200 == 0:
                     print("Training loss (for one batch) at step %d: %.4f" % (step, float(loss_value)))
-                    print("Seen so far: %s samples" % ((step + 1) * batch_size))
+                    print("Seen so far: %s samples" % ((step + 1) * train_batch))
             
             training_accuracy = float(train_acc_metric.result())
             forward_duration = aggregated_forward_duration/steps
@@ -241,6 +232,13 @@ class MyTrainableClass(tune.Trainable):
         train_acc = train_acc_metric.result()
         train_acc_metric.reset_states()
         
+        ##### Inference #####
+        val_batch_size = self.config.get("train_inference", 32)
+        val_dataset = val_dataset.batch(val_batch_size)
+        self.set_cores(self.config.get("inference_cores", 8))
+        self.set_memory(self.config.get("inference_memory", 16))
+
+        val_acc_metric = keras.metrics.SparseCategoricalAccuracy()
         inference_start = time.time()
         for x_batch_val, y_batch_val in val_dataset:
             val_logits = model(x_batch_val, training=False)
@@ -257,7 +255,14 @@ class MyTrainableClass(tune.Trainable):
         print("Inference duration: %f" % inference_duration)
         print("Real ratio: %f" % real_ratio)
         
-        return {"training_accuracy": training_accuracy, "inference_accuracy": inference_accuracy, "forward_duration": forward_duration, "training_duration": training_duration, "epoch_duration": epoch_duration, "inference_duration": inference_duration, "proxy_ratio": proxy_ratio, "real_ratio": real_ratio}
+        return {"training_accuracy": training_accuracy, 
+                "inference_accuracy": inference_accuracy, 
+                "forward_duration": forward_duration, 
+                "training_duration": training_duration, 
+                "epoch_duration": epoch_duration, 
+                "inference_duration": inference_duration, 
+                "proxy_ratio": proxy_ratio, 
+                "real_ratio": real_ratio}
 
     def save_checkpoint(self, checkpoint_dir):
         path = os.path.join(checkpoint_dir, "checkpoint")
@@ -290,12 +295,16 @@ if __name__ == "__main__":
         stop={"training_iteration": 1},
         resources_per_trial={
             "cpu": 8,
-            "gpu": 1
+            "gpu": 0
         },
         config={
-            "n": tune.grid_search([3, 5, 7]),
-            "cores": tune.grid_search([8]),
-            "batch": tune.grid_search([64])
+            "n": tune.grid_search([3]),
+            "train_cores": tune.grid_search([8]),
+            "inference_cores": tune.grid_search([8]),
+            "train_memory": tune.grid_search([1, 4, 16]),
+            "inference_memory": tune.grid_search([16]),
+            "train_batch": tune.grid_search([64]),
+            "inference_batch": tune.grid_search([64])
         },
         verbose=1,
         scheduler=hyperband,
