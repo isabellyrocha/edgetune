@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
+from pathlib import Path
 import subprocess
 import resource
 import argparse
 import json
 import os
+import shutil
 import time
 from keras.layers import Dense, Conv2D, BatchNormalization, Activation
 from keras.regularizers import l2
@@ -169,6 +171,7 @@ class MyTrainableClass(tune.Trainable):
 
         ##### Setting training configurations #####
         n = self.config.get("n", 3)
+        print(n)
         model_depth = n * 6 + 2
         train_batch = self.config.get("train_batch", 128)
         self.set_cores(self.config.get("train_cores", 8))
@@ -187,7 +190,10 @@ class MyTrainableClass(tune.Trainable):
         model = self.resnet_v1(input_shape=shape, depth=model_depth)
         optimizer = keras.optimizers.SGD(learning_rate=1e-3)
         loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        directory_name = "%s/edgetune/models/model_%d" % (str(Path.home()), n)
 
+        if os.path.isdir(directory_name):
+            model = keras.models.load_model(directory_name)
 
         ##### Training #####
         train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
@@ -232,6 +238,13 @@ class MyTrainableClass(tune.Trainable):
         train_acc = train_acc_metric.result()
         train_acc_metric.reset_states()
         
+        #model.save('%s/edgetune/model' % str(Path.home()))
+        if os.path.isdir(directory_name):
+            shutil.rmtree(directory_name)
+        os.mkdir(directory_name)
+        model.save(directory_name)
+        #model.save("%s/edgetune/models/model_%d" % (str(Path.home(), n))
+
         ##### Inference #####
         val_batch_size = self.config.get("train_inference", 32)
         val_dataset = val_dataset.batch(val_batch_size)
@@ -286,22 +299,22 @@ if __name__ == "__main__":
 
     tuning_start = time.time()
 
-    hyperband = HyperBandScheduler(time_attr="training_accuracy", metric="training_accuracy", mode = "max", max_t=18)
+    hyperband = HyperBandScheduler(time_attr="training_accuracy", metric="training_accuracy", mode = "max", max_t=200)
 
     analysis = tune.run(
         MyTrainableClass,
         name="hyperband_test",
         num_samples=1,
-        stop={"training_iteration": 1},
+        stop={"training_iteration": 10},
         resources_per_trial={
             "cpu": 8,
             "gpu": 0
         },
         config={
-            "n": tune.grid_search([3]),
-            "train_cores": tune.grid_search([8]),
+            "n": tune.grid_search([3, 5, 7]),
+            "train_cores": tune.grid_search([4, 8]),
             "inference_cores": tune.grid_search([8]),
-            "train_memory": tune.grid_search([1, 4, 16]),
+            "train_memory": tune.grid_search([16]),
             "inference_memory": tune.grid_search([16]),
             "train_batch": tune.grid_search([64]),
             "inference_batch": tune.grid_search([64])
