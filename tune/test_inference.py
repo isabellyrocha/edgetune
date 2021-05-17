@@ -144,7 +144,7 @@ class MyTrainableClass(tune.Trainable):
         loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
         ##### Inference #####
-        val_batch_size = self.config.get("train_inference", 32)
+        val_batch_size = self.config.get("inference_batch", 32)
         val_dataset = val_dataset.batch(val_batch_size)
         self.set_cores(self.config.get("inference_cores", 4))
         self.set_memory(self.config.get("inference_memory", 16))
@@ -209,7 +209,7 @@ if __name__ == "__main__":
         config={
             "n": tune.grid_search([3, 5, 7]),
             "inference_cores": tune.grid_search([1,2,4]),
-            "inference_memory": tune.grid_search([8]),
+            "inference_memory": tune.grid_search([16]),
             "inference_batch": tune.grid_search([1, 32, 64, 128, 256, 512, 1024])
         },
         verbose=1,
@@ -218,7 +218,7 @@ if __name__ == "__main__":
  
     trials = analysis.trials
     for trial in trials:
-        print("%d,%d,%d,%d,%f\n" % 
+        print("%d,%d,%d,%d,%f" % 
                 (trial.config['inference_cores'],
                 trial.config['inference_memory'],
                 trial.config['n'],
