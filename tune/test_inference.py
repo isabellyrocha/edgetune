@@ -128,9 +128,6 @@ class MyTrainableClass(tune.Trainable):
         ##### Setting training configurations #####
         n = self.config.get("n", 3)
         model_depth = n * 6 + 2
-        train_batch = self.config.get("train_batch", 128)
-        self.set_cores(self.config.get("train_cores", 8))
-        self.set_memory(self.config.get("train_memory", 64))
 
         ##### Dataset #####
         (x_train, y_train), (x_test, y_test) = cifar10.load_data()
@@ -146,54 +143,10 @@ class MyTrainableClass(tune.Trainable):
         optimizer = keras.optimizers.SGD(learning_rate=1e-3)
         loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-        '''
-        ##### Training #####
-        train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
-        val_acc_metric = keras.metrics.SparseCategoricalAccuracy()
-        
-        training_duration = 0
-        epochs = 1
-        for epoch in range(epochs):
-            print("Start of epoch %d" % (epoch,))
-            epoch_start = time.time()
-            
-            aggregated_forward_duration = 0
-            steps = 0
-            for step, (x_batch_train, y_batch_train) in enumerate(train_dataset):
-                step_start = time.time()
-                with tf.GradientTape() as tape:
-                    logits = model(x_batch_train, training=True)  # Logits for this minibatch
-                    loss_value = loss_fn(y_batch_train, logits)
-                grads = tape.gradient(loss_value, model.trainable_weights)
-                step_duration = time.time() - step_start
-                aggregated_forward_duration += step_duration
-                steps += 1
-                
-                optimizer.apply_gradients(zip(grads, model.trainable_weights))
-                train_acc_metric.update_state(y_batch_train, logits)
-                
-                if step % 200 == 0:
-                    print("Training loss (for one batch) at step %d: %.4f" % (step, float(loss_value)))
-                    print("Seen so far: %s samples" % ((step + 1) * train_batch))
-            
-            training_accuracy = float(train_acc_metric.result())
-            forward_duration = aggregated_forward_duration/steps
-            epoch_duration = time.time() - epoch_start
-            training_duration += epoch_duration
-            proxy_ratio = training_accuracy/(forward_duration*epoch_duration)
-            
-            print("Training accuracy %f" % training_accuracy)
-            print("Forward duration: %f\n" % forward_duration)
-            print("Epoch duration: %f\n" % epoch_duration)
-            print("Proxy ratio: %f\n" % proxy_ratio)
-
-        train_acc = train_acc_metric.result()
-        train_acc_metric.reset_states()
-        '''
         ##### Inference #####
         val_batch_size = self.config.get("train_inference", 32)
         val_dataset = val_dataset.batch(val_batch_size)
-        self.set_cores(self.config.get("inference_cores", 8))
+        self.set_cores(self.config.get("inference_cores", 4))
         self.set_memory(self.config.get("inference_memory", 16))
 
         val_acc_metric = keras.metrics.SparseCategoricalAccuracy()
@@ -207,20 +160,18 @@ class MyTrainableClass(tune.Trainable):
         val_acc_metric.reset_states()
         
         inference_duration = time.time() - inference_start
-        #real_ratio = inference_accuracy/inference_duration
 
-        print("Inference accuracy: %f" % inference_accuracy)
-        print("Inference duration: %f" % inference_duration)
-        #print("Real ratio: %f" % real_ratio)
+        #print("Inference accuracy: %f" % inference_accuracy)
+        #print("Inference duration: %f" % inference_duration)
         
-        return {#"training_accuracy": training_accuracy, 
-                #"inference_accuracy": inference_accuracy, 
-                #"forward_duration": forward_duration, 
-                #"training_duration": training_duration, 
-                #"epoch_duration": epoch_duration, 
-                "inference_duration": inference_duration}
-               # "proxy_ratio": proxy_ratio}
-                #"real_ratio": real_ratio}
+        print("%d,%d,%d,%d,%f\n" % 
+                (self.config.get("inference_cores", 8),
+                self.config.get("inference_memory", 16),
+                n,
+                val_batch_size,
+                inference_duration))
+
+        return {"inference_duration": inference_duration}
 
     def save_checkpoint(self, checkpoint_dir):
         path = os.path.join(checkpoint_dir, "checkpoint")
@@ -244,7 +195,7 @@ if __name__ == "__main__":
 
     tuning_start = time.time()
 
-    hyperband = HyperBandScheduler(time_attr="inference_duration", metric="inference_duration", mode = "min", max_t=18)
+    hyperband = HyperBandScheduler(time_attr="inference_duration", metric="inference_duration", mode = "min", max_t=180)
 
     analysis = tune.run(
         MyTrainableClass,
@@ -256,13 +207,10 @@ if __name__ == "__main__":
             "gpu": 0
         },
         config={
-            "n": tune.grid_search([3]),
-            "train_cores": tune.grid_search([8]),
-            "inference_cores": tune.grid_search([1, 2, 4]),
-            "train_memory": tune.grid_search([8]),
+            "n": tune.grid_search([3, 5, 7]),
+            "inference_cores": tune.grid_search([1,2,4]),
             "inference_memory": tune.grid_search([16]),
-            "train_batch": tune.grid_search([64]),
-            "inference_batch": tune.grid_search([64])
+            "inference_batch": tune.grid_search([1, 32, 64, 128, 256, 512, 1024])
         },
         verbose=1,
         scheduler=hyperband,
@@ -270,8 +218,14 @@ if __name__ == "__main__":
  
     trials = analysis.trials
     for trial in trials:
-        print(trial.config)
-        print("inference_duration: " + str(trial.metric_analysis['inference_duration']))
+        print("%d,%d,%d,%d,%f\n" % 
+                (trial.config['inference_cores'],
+                trial.config['inference_memory'],
+                trial.config['n'],
+                trial.config['inference_batch'],
+                trial.metric_analysis['inference_duration']['avg']))
+        #print(trial.config)
+        #print("inference_duration: " + str(trial.metric_analysis['inference_duration']))
 
     best_config_acc = analysis.get_best_config(metric="inference_duration", mode="min")
     print("Best hyperparameters found were: ", best_config_acc)
