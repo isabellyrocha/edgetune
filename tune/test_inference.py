@@ -135,7 +135,7 @@ class MyTrainableClass(tune.Trainable):
         x_train = x_train.astype('float32') / 255
         x_test = x_test.astype('float32') / 255
         train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
-        train_dataset = train_dataset.shuffle(buffer_size=1024).batch(train_batch)
+        #train_dataset = train_dataset.shuffle(buffer_size=1024).batch(train_batch)
         val_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
 
         ##### Model #####
@@ -209,7 +209,7 @@ if __name__ == "__main__":
         config={
             "n": tune.grid_search([3, 5, 7]),
             "inference_cores": tune.grid_search([1,2,4]),
-            "inference_memory": tune.grid_search([16]),
+            "inference_memory": tune.grid_search([8]),
             "inference_batch": tune.grid_search([1, 32, 64, 128, 256, 512, 1024])
         },
         verbose=1,
