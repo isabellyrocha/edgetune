@@ -124,7 +124,7 @@ class MyTrainableClass(tune.Trainable):
         loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
         ##### Inference #####
-        total_samples = 64
+        total_samples = 500
         val_batch_size = self.config.get("inference_batch", 32)
         val_dataset = val_dataset.batch(val_batch_size)
         self.set_cores(self.config.get("inference_cores", 4))
