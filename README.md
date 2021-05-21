@@ -1,4 +1,4 @@
-# EdgeTune
+# EdgeTune: Inferece-Oriented Parameter Tuning
 
 ## Requirements:
 
