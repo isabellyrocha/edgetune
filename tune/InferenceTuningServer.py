@@ -1,4 +1,5 @@
 import subprocess
+#import pyRAPL
 import resource
 import argparse
 import json
@@ -18,6 +19,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from keras.datasets import cifar10
 import socket
+import lib.rapl as rapl
 
 class MyTrainableClass(tune.Trainable):
 
@@ -26,7 +28,7 @@ class MyTrainableClass(tune.Trainable):
     
     def set_cores(self, cores):
         command = "ps -aux | awk '{print $2}' | while read line ; do sudo taskset -cp -pa 0-%d $line; done" % (int(cores)-1)
-        subprocess.Popen(['ssh', socket.gethostbyname(socket.gethostname()), command], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.Popen(['ssh', 'eiger-1.maas', command], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         print("Changed number of cores to %d... " % cores)
 
     def set_memory(self, memory):
@@ -133,6 +135,8 @@ class MyTrainableClass(tune.Trainable):
         val_acc_metric = keras.metrics.SparseCategoricalAccuracy()
         inference_start = time.time()
         seen_samples = 0
+        global end_energy, start_energy
+        start_energy = rapl.RAPLMonitor.sample()
         for x_batch_val, y_batch_val in val_dataset:
             val_logits = model(x_batch_val, training=False)
             val_acc_metric.update_state(y_batch_val, val_logits)
@@ -144,18 +148,21 @@ class MyTrainableClass(tune.Trainable):
         val_acc_metric.reset_states()
         
         inference_duration = time.time() - inference_start
-
+        end_energy = rapl.RAPLMonitor.sample()
+        diff = end_energy-start_energy
         #print("Inference accuracy: %f" % inference_accuracy)
         #print("Inference duration: %f" % inference_duration)
-        
-        print("%d,%d,%d,%d,%f\n" % 
+        inference_energy = diff.energy('package-0')
+        print("%d,%d,%d,%d,%f,%f" % 
                 (self.config.get("inference_cores", 8),
                 self.config.get("inference_memory", 16),
                 n,
                 val_batch_size,
-                inference_duration))
+                inference_duration,
+                inference_energy))
 
-        return {"inference_duration": inference_duration}
+        return {"inference_duration": inference_duration,
+                "inference_energy": inference_energy}
 
     def save_checkpoint(self, checkpoint_dir):
         path = os.path.join(checkpoint_dir, "checkpoint")
@@ -176,6 +183,8 @@ if __name__ == "__main__":
     tf.config.threading.set_inter_op_parallelism_threads(8)
     tf.config.threading.set_intra_op_parallelism_threads(8)
     ray.init(num_cpus=8)
+
+    #pyRAPL.setup()
 
     tuning_start = time.time()
 
@@ -205,12 +214,13 @@ if __name__ == "__main__":
 
     trials = analysis.trials
     for trial in trials:
-        print("%d,%d,%d,%d,%f" % 
+        print("%d,%d,%d,%d,%f,%f" % 
                 (trial.config['inference_cores'],
                 trial.config['inference_memory'],
                 trial.config['n'],
                 trial.config['inference_batch'],
-                trial.metric_analysis['inference_duration']['avg']))
+                trial.metric_analysis['inference_duration']['avg'],
+                trial.metric_analysis['inference_energy']['avg']))
         #print(trial.config)
         #print("inference_duration: " + str(trial.metric_analysis['inference_duration']))
 
