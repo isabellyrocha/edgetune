@@ -19,9 +19,6 @@ from tensorflow.keras import layers
 from keras.datasets import cifar10
 import socket
 
-#tf.config.threading.set_inter_op_parallelism_threads(8)
-#tf.config.threading.set_intra_op_parallelism_threads(8)
-
 class MyTrainableClass(tune.Trainable):
 
     def setup(self, config):
@@ -208,7 +205,7 @@ if __name__ == "__main__":
 
     trials = analysis.trials
     for trial in trials:
-        print("%d,%d,%d,%d,%f\n" % 
+        print("%d,%d,%d,%d,%f" % 
                 (trial.config['inference_cores'],
                 trial.config['inference_memory'],
                 trial.config['n'],
