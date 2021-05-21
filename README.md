@@ -72,3 +72,9 @@ $ systemctl restart bluetooth.service
 $ pip3 install influxdb
 $ python3 poe_power.py -p PORT
 ```
+
+- RAPL
+
+```Shell
+$ sudo chmod -R a+r /sys/class/powercap/intel-rapl
+```
