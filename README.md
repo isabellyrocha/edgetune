@@ -1,22 +1,14 @@
-# EdgeTune: Inferece-Oriented Parameter Tuning
-
-## Requirements:
-
-- pip3
-- torch
-- torchvision
-
 ## Install pip3
 ```Shell
 $ sudo apt-get update
 $ sudo apt-get install python3-pip
 ```
 
-## Install torch and torchvision 
+## Install Python dependencies
 
 - Intel (nuc)
 ```Shell
-$ pip3 install torch torchvision 
+$ pip3 install torch torchvision keras tensorflow ray[rllib] pandas tensorflow_datasets
 ```
 
 - ARM (RaspberryPi)
@@ -77,4 +69,10 @@ $ python3 poe_power.py -p PORT
 
 ```Shell
 $ sudo chmod -R a+r /sys/class/powercap/intel-rapl
+```
+
+## Change rapl permissions
+
+```Shell
+sudo chmod -R a+r /sys/class/powercap/intel-rapl
 ```
