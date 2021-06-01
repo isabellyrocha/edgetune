@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from ray.tune import CLIReporter
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 from pathlib import Path
 import subprocess
 import resource
@@ -263,8 +263,7 @@ if __name__ == "__main__":
         "--smoke-test", action="store_true", help="Finish quickly for testing")
     args, _ = parser.parse_known_args()
     
-    ray.init(num_cpus=8)
-
+    ray.init(num_gpus=1)
 
     tuning_start = time.time()
 
@@ -282,23 +281,23 @@ if __name__ == "__main__":
             })
             #time_attr="training_accuracy", metric="training_accuracy", mode = "max", max_t=2)
 
-    reporter = CLIReporter(max_progress_rows=10)
+    reporter = CLIReporter(max_progress_rows=50)
     reporter.add_metric_column("training_accuracy")
     analysis = tune.run(
         MyTrainableClass,
         name="pbt_test",
         scheduler=pbt,
         verbose=1,
-        stop={"training_iteration": 10},
+        stop={"training_iteration": 1},
         #stop={"training_accuracy": 0.8},
         resources_per_trial={
-            "cpu": 8,
-            "gpu": 0
-        },
+            "cpu": 0,
+            "gpu": 1
+            },
         metric="training_accuracy", 
         mode = "max",
-        keep_checkpoints_num=40,
-        num_samples=40,
+        keep_checkpoints_num=4,
+        num_samples=4,
         config={
             "n": tune.grid_search([3, 5, 7]),
             "train_cores": tune.grid_search([4]),
