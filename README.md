@@ -5,6 +5,7 @@
 - pip3
 - torch
 - torchvision
+- keras
 
 ## Install pip3
 ```Shell
@@ -16,7 +17,7 @@ $ sudo apt-get install python3-pip
 
 - Intel (nuc)
 ```Shell
-$ pip3 install torch torchvision 
+$ pip3 install torch torchvision keras
 ```
 
 - ARM (RaspberryPi)
