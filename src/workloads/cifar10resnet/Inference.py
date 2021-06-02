@@ -1,4 +1,4 @@
-from workloads.models.Resnet import Resnet
+from workloads.cifar10resnet.Resnet import Resnet
 from keras.datasets import cifar10
 from tensorflow import keras
 from pathlib import Path
@@ -9,7 +9,7 @@ import json
 import time
 import os
 
-class ResnetCifar10Inf(tune.Trainable):
+class Inference(tune.Trainable):
     def setup(self, config):
         self.timestep = 0
 

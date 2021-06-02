@@ -1,5 +1,5 @@
 #from workloads.MyTrainableClass import MyTrainableClass
-from workloads.ResnetCifar10Inf import ResnetCifar10Inf
+from workloads.cifar10resnet.Inference import Inference
 from ray.tune.schedulers.hb_bohb import HyperBandForBOHB
 from ray.tune.suggest.bohb import TuneBOHB
 from ray import tune
@@ -25,7 +25,7 @@ def runSearch(n):
     bohb_search = TuneBOHB(max_concurrent=1)
 
     analysis = tune.run(
-        ResnetCifar10Inf,
+        Inference,
         name="EdgeTuneV1[BOHB]",
         config=config,
         scheduler=bohb_hyperband,

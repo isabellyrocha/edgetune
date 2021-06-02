@@ -1,4 +1,4 @@
-from workloads.ResnetCifar10Train import ResnetCifar10Train
+from workloads.cifar10resnet.Training import Training
 from ray.tune.schedulers.hb_bohb import HyperBandForBOHB
 from ray.tune.suggest.bohb import TuneBOHB
 from ray.tune import CLIReporter
@@ -34,7 +34,7 @@ def runSearch():
     reporter.add_metric_column("inference_batch")
 
     analysis = tune.run(
-        ResnetCifar10Train,
+        Training,
         name="EdgeTuneV1[BOHB]",
         config=config,
         scheduler=bohb_hyperband,

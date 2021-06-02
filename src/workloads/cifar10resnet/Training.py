@@ -1,5 +1,5 @@
 from tuning import InferenceServer
-from workloads.models.Resnet import Resnet
+from workloads.cifar10resnet.Resnet import Resnet
 from keras.datasets import cifar10
 from tensorflow import keras
 from pathlib import Path
@@ -14,7 +14,7 @@ import os
 #tf.config.threading.set_inter_op_parallelism_threads(8)
 #tf.config.threading.set_intra_op_parallelism_threads(8)
 
-class ResnetCifar10Train(tune.Trainable):
+class Training(tune.Trainable):
 
     def setup(self, config):
         self.timestep = 0
