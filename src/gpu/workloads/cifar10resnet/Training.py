@@ -64,7 +64,7 @@ class Training(tune.Trainable):
         train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
         val_acc_metric = keras.metrics.SparseCategoricalAccuracy()
 
-        epochs = self.timestep
+        epochs = self.timestep + 1
         training_start = time.time()
         start_energy = rapl.RAPLMonitor.sample()
         for epoch in range(epochs):
