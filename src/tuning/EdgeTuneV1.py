@@ -1,5 +1,5 @@
 from workloads.MyTrainableClass import MyTrainableClass
-from workloads.ResnetCifar10 import ResnetCifar10
+from workloads.ResnetCifar10Train import ResnetCifar10Train
 from ray.tune.schedulers.hb_bohb import HyperBandForBOHB
 from ray.tune.suggest.bohb import TuneBOHB
 from ray import tune
@@ -12,13 +12,6 @@ def runSearch():
 
     ray.init(num_cpus=8)
 
-#    config = {
-#        "iterations": 100,
-#        "width": tune.uniform(0, 20),
-#        "height": tune.uniform(-100, 100),
-#        "activation": tune.choice(["relu", "tanh"])
-#    }
-
     config={
             "iterations": 100,
             "n": tune.choice([3, 5, 7]),
@@ -30,27 +23,15 @@ def runSearch():
             "inference_batch": tune.choice([32, 64, 128, 256])
     }
 
-    # Optional: Pass the parameter space yourself
-    # config_space = CS.ConfigurationSpace()
-    # config_space.add_hyperparameter(
-    #     CS.UniformFloatHyperparameter("width", lower=0, upper=20))
-    # config_space.add_hyperparameter(
-    #     CS.UniformFloatHyperparameter("height", lower=-100, upper=100))
-    # config_space.add_hyperparameter(
-    #     CS.CategoricalHyperparameter(
-    #         "activation", choices=["relu", "tanh"]))
-
     bohb_hyperband = HyperBandForBOHB(
         time_attr="training_iteration",
         max_t=100,
         reduction_factor=2)
 
-    bohb_search = TuneBOHB(
-        # space=config_space,  # If you want to set the space manually
-        max_concurrent=1)
+    bohb_search = TuneBOHB(max_concurrent=1)
 
     analysis = tune.run(
-        ResnetCifar10,
+        ResnetCifar10Train,
         name="EdgeTuneV1[BOHB]",
         config=config,
         scheduler=bohb_hyperband,

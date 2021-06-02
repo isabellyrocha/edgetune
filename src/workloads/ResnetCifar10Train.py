@@ -13,7 +13,7 @@ import os
 #tf.config.threading.set_inter_op_parallelism_threads(8)
 #tf.config.threading.set_intra_op_parallelism_threads(8)
 
-class ResnetCifar10(tune.Trainable):
+class ResnetCifar10Train(tune.Trainable):
 
     def setup(self, config):
         self.timestep = 0
