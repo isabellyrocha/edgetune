@@ -7,7 +7,7 @@ import json
 import ray
 import os
 
-def runSearch(n):
+def runSearch(n, result):
     import ConfigSpace as CS  # noqa: F401
 
     config={
@@ -26,12 +26,12 @@ def runSearch(n):
 
     analysis = tune.run(
         Inference,
-        name="EdgeTuneV1[BOHB]",
+        name="InferenceServer[BOHB]",
         config=config,
         scheduler=bohb_hyperband,
         search_alg=bohb_search,
-        num_samples=1,
-        stop={"training_iteration": 100},
+        num_samples=10,
+        stop={"training_iteration": 1},
         metric="inference_duration",
         mode="min",
         resources_per_trial={
@@ -39,6 +39,6 @@ def runSearch(n):
             "gpu": 0
         })
 
-    print("Best hyperparameters found were: ", analysis.best_config)
-    #print("Best hyperparameters found were: ", analysis.best_result)
-    return analysis.best_result
+    for key in analysis.best_result.keys():
+        result[key] = analysis.best_result[key]
+    return result

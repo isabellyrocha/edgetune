@@ -3,4 +3,4 @@ from tuning import InferenceServer
 
 if __name__ == "__main__":
     EdgeTuneV1.runSearch()
-    #InferenceServer.runSearch(3)
+    #InferenceServer.runSearch(3, result)

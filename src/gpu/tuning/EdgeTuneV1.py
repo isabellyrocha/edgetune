@@ -39,13 +39,13 @@ def runSearch():
         config=config,
         scheduler=bohb_hyperband,
         search_alg=bohb_search,
-        num_samples=1,
+        num_samples=10,
         stop={"training_iteration": 100},
         metric="runtime_ratio",
         mode="min",
         resources_per_trial={
-            "cpu": 4,
-            "gpu": 0
+            "cpu": 0,
+            "gpu": 1
         },
         progress_reporter=reporter)
 

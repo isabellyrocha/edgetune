@@ -7,6 +7,7 @@ from utils import utils
 import workloads.cifar10resnet.lib.rapl.rapl as rapl
 import tensorflow as tf
 from ray import tune
+from threading import Thread
 import json
 import shutil
 import time
@@ -33,6 +34,12 @@ class Training(tune.Trainable):
         model_depth = n * 6 + 2
         train_batch = self.config.get("train_batch", 128)
         utils.set_training_cores(self.config.get("train_cores", 4))
+
+        #### Inference ###
+        accResults = {}
+        if self.inference_duration is None:
+            thread = Thread(target=InferenceServer.runSearch, args=[n, accResults])
+            thread.start()
 
         ##### Dataset #####
         (x_train, y_train), (x_test, y_test) = cifar10.load_data()
@@ -76,7 +83,7 @@ class Training(tune.Trainable):
                 if step % 200 == 0:
                     print("Training loss (for one batch) at step %d: %.4f" % (step, float(loss_value)))
                     print("Seen so far: %s samples" % ((step + 1) * train_batch))
-                break
+                #break
         
         training_duration = time.time() - training_start
         end_energy = rapl.RAPLMonitor.sample()
@@ -91,9 +98,11 @@ class Training(tune.Trainable):
         os.mkdir(directory_name)
         model.save(directory_name)
         
+        ### Inference ###
         if self.inference_duration is None:
-            accResults = InferenceServer.runSearch(n)
+            thread.join()
             self.inference_duration = accResults['inference_duration']
+            self.inference_energy = accResults['inference_energy']
             self.inference_cores = accResults['config']['inference_cores']
             self.inference_batch = accResults['config']['inference_batch']
 

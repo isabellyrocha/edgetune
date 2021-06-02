@@ -4,8 +4,10 @@ from keras.datasets import cifar10
 from tensorflow import keras
 from pathlib import Path
 from utils import utils
+import workloads.cifar10resnet.lib.rapl.rapl as rapl
 import tensorflow as tf
 from ray import tune
+from threading import Thread
 import json
 import shutil
 import time
@@ -19,6 +21,7 @@ class Training(tune.Trainable):
     def setup(self, config):
         self.timestep = 0
         self.inference_duration = None
+        self.inference_energy = None
         self.inference_batch = None
         self.inference_cores = None
 
@@ -30,8 +33,13 @@ class Training(tune.Trainable):
         print(n)
         model_depth = n * 6 + 2
         train_batch = self.config.get("train_batch", 128)
-        #utils.set_cores(self.config.get("train_cores", 8))
-        #utils.set_memory(self.config.get("train_memory", 64))
+        utils.set_training_cores(self.config.get("train_cores", 4))
+
+        #### Inference ###
+        accResults = {}
+        if self.inference_duration is None:
+            thread = Thread(target=InferenceServer.runSearch, args=[n, accResults])
+            thread.start()
 
         ##### Dataset #####
         (x_train, y_train), (x_test, y_test) = cifar10.load_data()
@@ -58,6 +66,7 @@ class Training(tune.Trainable):
 
         epochs = 1
         training_start = time.time()
+        start_energy = rapl.RAPLMonitor.sample()
         for epoch in range(epochs):
             print("Start of epoch %d" % (epoch,))
 
@@ -74,9 +83,12 @@ class Training(tune.Trainable):
                 if step % 200 == 0:
                     print("Training loss (for one batch) at step %d: %.4f" % (step, float(loss_value)))
                     print("Seen so far: %s samples" % ((step + 1) * train_batch))
-                break
+                #break
         
         training_duration = time.time() - training_start
+        end_energy = rapl.RAPLMonitor.sample()
+        diff = end_energy-start_energy
+        training_energy = diff.energy('package-0')
         train_acc = train_acc_metric.result()
         training_accuracy = float(train_acc_metric.result())
         train_acc_metric.reset_states()
@@ -86,9 +98,11 @@ class Training(tune.Trainable):
         os.mkdir(directory_name)
         model.save(directory_name)
         
+        ### Inference ###
         if self.inference_duration is None:
-            accResults = InferenceServer.runSearch(n)
+            thread.join()
             self.inference_duration = accResults['inference_duration']
+            self.inference_energy = accResults['inference_energy']
             self.inference_cores = accResults['config']['inference_cores']
             self.inference_batch = accResults['config']['inference_batch']
 
@@ -98,7 +112,9 @@ class Training(tune.Trainable):
             "runtime_ratio": runtime_ratio,
             "training_accuracy": training_accuracy,
             "training_duration": training_duration,
+            "training_energy": training_energy,
             "inference_duration": self.inference_duration,
+            "inference_energy": self.inference_energy,
             "inference_cores": self.inference_cores,
             "inference_batch": self.inference_batch
         }
@@ -111,6 +127,7 @@ class Training(tune.Trainable):
             f.write(json.dumps({
                 "timestep": self.timestep,
                 "inference_duration": self.inference_duration,
+                "inference_energy": self.inference_energy,
                 "inference_batch": self.inference_batch,
                 "inference_cores": self.inference_cores
             }))
@@ -121,5 +138,6 @@ class Training(tune.Trainable):
             j = json.loads(f.read())
             self.timestep = j["timestep"]
             self.inference_duration = j["inference_duration"]
+            self.inference_energy = j["inference_energy"]
             self.inference_batch = j["inference_batch"]
             self.inference_cores = j["inference_cores"]

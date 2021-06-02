@@ -7,7 +7,7 @@ import json
 import ray
 import os
 
-def runSearch(n):
+def runSearch(n, result):
     import ConfigSpace as CS  # noqa: F401
 
     config={
@@ -39,4 +39,6 @@ def runSearch(n):
             "gpu": 0
         })
 
-    return analysis.best_result
+    for key in analysis.best_result.keys():
+        result[key] = analysis.best_result[key]
+    return result

@@ -1,9 +1,11 @@
+import workloads.cifar10resnet.lib.rapl.rapl as rapl
 from workloads.cifar10resnet.Resnet import Resnet
 from keras.datasets import cifar10
 from tensorflow import keras
 from pathlib import Path
 from utils import utils
 import tensorflow as tf
+
 from ray import tune
 import json
 import time
@@ -35,16 +37,20 @@ class Inference(tune.Trainable):
         ##### Inference #####
         val_batch_size = self.config.get("train_inference", 32)
         val_dataset = val_dataset.batch(val_batch_size)
-        utils.set_cores(self.config.get("inference_cores", 8))
-        utils.set_memory(self.config.get("inference_memory", 16))
+        utils.set_inference_cores(self.config.get("inference_cores", 4))
 
         inference_start = time.time()
+        start_energy = rapl.RAPLMonitor.sample()
         for x_batch_val, y_batch_val in val_dataset:
             val_logits = model(x_batch_val, training=False)
         inference_duration = time.time() - inference_start
+        end_energy = rapl.RAPLMonitor.sample()
+        diff = end_energy-start_energy
+        inference_energy = diff.energy('package-0')
 
         result = {
-            "inference_duration": inference_duration
+            "inference_duration": inference_duration,
+            "inference_energy": inference_energy
         }
 
         return result
