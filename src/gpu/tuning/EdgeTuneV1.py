@@ -7,10 +7,12 @@ import json
 import ray
 import os
 
+
 def runSearch():
     import ConfigSpace as CS  # noqa: F401
 
-    ray.init(num_cpus=8)
+    #ray.init(num_cpus=8)
+    ray.init(num_gpus=1)
 
     config={
             "iterations": 100,
