@@ -26,7 +26,7 @@ class Training(tune.Trainable):
         self.inference_cores = None
 
     def step(self):
-        self.timestep += 1
+        self.timestep += self.timestep
 
         ##### Setting training configurations #####
         n = self.config.get("n", 3)
@@ -64,7 +64,7 @@ class Training(tune.Trainable):
         train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
         val_acc_metric = keras.metrics.SparseCategoricalAccuracy()
 
-        epochs = 1
+        epochs = self.timestep
         training_start = time.time()
         start_energy = rapl.RAPLMonitor.sample()
         for epoch in range(epochs):
