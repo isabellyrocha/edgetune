@@ -7,6 +7,7 @@ import tensorflow as tf
 from ray import tune
 import json
 import time
+import os
 
 class ResnetCifar10Inf(tune.Trainable):
     def setup(self, config):
@@ -40,7 +41,6 @@ class ResnetCifar10Inf(tune.Trainable):
         inference_start = time.time()
         for x_batch_val, y_batch_val in val_dataset:
             val_logits = model(x_batch_val, training=False)
-            val_acc_metric.update_state(y_batch_val, val_logits)
         inference_duration = time.time() - inference_start
 
         result = {

@@ -1,7 +1,7 @@
-from workloads.MyTrainableClass import MyTrainableClass
 from workloads.ResnetCifar10Train import ResnetCifar10Train
 from ray.tune.schedulers.hb_bohb import HyperBandForBOHB
 from ray.tune.suggest.bohb import TuneBOHB
+from ray.tune import CLIReporter
 from ray import tune
 import json
 import ray
@@ -15,12 +15,7 @@ def runSearch():
     config={
             "iterations": 100,
             "n": tune.choice([3, 5, 7]),
-            #"train_cores": tune.choice([4, 8]),
-            "inference_cores": tune.choice([8]),
-            #"train_memory": tune.choice([16]),
-            #"inference_memory": tune.choice([16]),
-            "train_batch": tune.choice([64]),
-            "inference_batch": tune.choice([32, 64, 128, 256])
+            "train_batch": tune.choice([32, 64, 128, 256, 512])
     }
 
     bohb_hyperband = HyperBandForBOHB(
@@ -30,19 +25,28 @@ def runSearch():
 
     bohb_search = TuneBOHB(max_concurrent=1)
 
+    reporter = CLIReporter(max_progress_rows=50)
+    reporter.add_metric_column("training_accuracy")
+    reporter.add_metric_column("training_duration")
+    reporter.add_metric_column("inference_duration")
+    reporter.add_metric_column("runtime_ratio")
+    reporter.add_metric_column("inference_cores")
+    reporter.add_metric_column("inference_batch")
+
     analysis = tune.run(
         ResnetCifar10Train,
         name="EdgeTuneV1[BOHB]",
         config=config,
         scheduler=bohb_hyperband,
         search_alg=bohb_search,
-        num_samples=8,
+        num_samples=1,
         stop={"training_iteration": 100},
-        metric="training_duration",
-        mode="max",
+        metric="runtime_ratio",
+        mode="min",
         resources_per_trial={
-            "cpu": 8,
+            "cpu": 4,
             "gpu": 0
-        })
+        },
+        progress_reporter=reporter)
 
     print("Best hyperparameters found were: ", analysis.best_config)

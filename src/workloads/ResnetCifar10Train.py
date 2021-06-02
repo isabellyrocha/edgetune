@@ -1,3 +1,4 @@
+from tuning import InferenceServer
 from workloads.models.Resnet import Resnet
 from keras.datasets import cifar10
 from tensorflow import keras
@@ -17,6 +18,9 @@ class ResnetCifar10Train(tune.Trainable):
 
     def setup(self, config):
         self.timestep = 0
+        self.inference_duration = None
+        self.inference_batch = None
+        self.inference_cores = None
 
     def step(self):
         self.timestep += 1
@@ -82,40 +86,21 @@ class ResnetCifar10Train(tune.Trainable):
         os.mkdir(directory_name)
         model.save(directory_name)
         
-        ##### Inference #####
-        '''
-        val_batch_size = self.config.get("train_inference", 32)
-        val_dataset = val_dataset.batch(val_batch_size)
-        utils.set_cores(self.config.get("inference_cores", 8))
-        utils.set_memory(self.config.get("inference_memory", 16))
+        if self.inference_duration is None:
+            accResults = InferenceServer.runSearch(n)
+            self.inference_duration = accResults['inference_duration']
+            self.inference_cores = accResults['config']['inference_cores']
+            self.inference_batch = accResults['config']['inference_batch']
 
-        val_acc_metric = keras.metrics.SparseCategoricalAccuracy()
-        inference_start = time.time()
-        for x_batch_val, y_batch_val in val_dataset:
-            val_logits = model(x_batch_val, training=False)
-            #print(val_logits)
-            val_acc_metric.update_state(y_batch_val, val_logits)
-
-        inference_accuracy = float(val_acc_metric.result())
-        val_acc_metric.reset_states()
-
-        inference_duration = time.time() - inference_start
-        real_ratio = inference_accuracy/inference_duration
-
-        print("Inference accuracy: %f" % inference_accuracy)
-        print("Inference duration: %f" % inference_duration)
-        print("Real ratio: %f" % real_ratio)
-        '''
+        runtime_ratio = (training_duration*self.inference_duration)/training_accuracy
+        
         result = {
-            #"runtime_ratio": 1
+            "runtime_ratio": runtime_ratio,
             "training_accuracy": training_accuracy,
-            #"inference_accuracy": inference_accuracy,
-            #"forward_duration": forward_duration,
-            "training_duration": training_duration
-            #"epoch_duration": epoch_duration,
-            #"inference_duration": inference_duration,
-            #"proxy_ratio": proxy_ratio,
-            #"real_ratio": real_ratio
+            "training_duration": training_duration,
+            "inference_duration": self.inference_duration,
+            "inference_cores": self.inference_cores,
+            "inference_batch": self.inference_batch
         }
 
         return result
@@ -123,9 +108,18 @@ class ResnetCifar10Train(tune.Trainable):
     def save_checkpoint(self, checkpoint_dir):
         path = os.path.join(checkpoint_dir, "checkpoint")
         with open(path, "w") as f:
-            f.write(json.dumps({"timestep": self.timestep}))
+            f.write(json.dumps({
+                "timestep": self.timestep,
+                "inference_duration": self.inference_duration,
+                "inference_batch": self.inference_batch,
+                "inference_cores": self.inference_cores
+            }))
         return path
 
     def load_checkpoint(self, checkpoint_path):
         with open(checkpoint_path) as f:
-            self.timestep = json.loads(f.read())["timestep"]
+            j = json.loads(f.read())
+            self.timestep = j["timestep"]
+            self.inference_duration = j["inference_duration"]
+            self.inference_batch = j["inference_batch"]
+            self.inference_cores = j["inference_cores"]
