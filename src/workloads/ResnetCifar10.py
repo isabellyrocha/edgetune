@@ -26,8 +26,8 @@ class ResnetCifar10(tune.Trainable):
         print(n)
         model_depth = n * 6 + 2
         train_batch = self.config.get("train_batch", 128)
-        utils.set_cores(self.config.get("train_cores", 8))
-        utils.set_memory(self.config.get("train_memory", 64))
+        #utils.set_cores(self.config.get("train_cores", 8))
+        #utils.set_memory(self.config.get("train_memory", 64))
 
         ##### Dataset #####
         (x_train, y_train), (x_test, y_test) = cifar10.load_data()
@@ -70,7 +70,7 @@ class ResnetCifar10(tune.Trainable):
                 if step % 200 == 0:
                     print("Training loss (for one batch) at step %d: %.4f" % (step, float(loss_value)))
                     print("Seen so far: %s samples" % ((step + 1) * train_batch))
-
+                break
         
         training_duration = time.time() - training_start
         train_acc = train_acc_metric.result()

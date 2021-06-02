@@ -22,12 +22,12 @@ def runSearch():
     config={
             "iterations": 100,
             "n": tune.choice([3, 5, 7]),
-            "train_cores": tune.choice([4, 8]),
+            #"train_cores": tune.choice([4, 8]),
             "inference_cores": tune.choice([8]),
-            "train_memory": tune.choice([16]),
-            "inference_memory": tune.choice([16]),
+            #"train_memory": tune.choice([16]),
+            #"inference_memory": tune.choice([16]),
             "train_batch": tune.choice([64]),
-            "inference_batch": tune.choice([64])
+            "inference_batch": tune.choice([32, 64, 128, 256])
     }
 
     # Optional: Pass the parameter space yourself
@@ -43,8 +43,7 @@ def runSearch():
     bohb_hyperband = HyperBandForBOHB(
         time_attr="training_iteration",
         max_t=100,
-        reduction_factor=2,
-        stop_last_trials=False)
+        reduction_factor=2)
 
     bohb_search = TuneBOHB(
         # space=config_space,  # If you want to set the space manually
@@ -56,9 +55,13 @@ def runSearch():
         config=config,
         scheduler=bohb_hyperband,
         search_alg=bohb_search,
-        num_samples=20,
+        num_samples=8,
         stop={"training_iteration": 100},
-        metric="runtime_ratio",
-        mode="max")
+        metric="training_duration",
+        mode="max",
+        resources_per_trial={
+            "cpu": 8,
+            "gpu": 0
+        })
 
     print("Best hyperparameters found were: ", analysis.best_config)
