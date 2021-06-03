@@ -13,42 +13,38 @@ import shutil
 import time
 import os
 
-#tf.config.threading.set_inter_op_parallelism_threads(8)
-#tf.config.threading.set_intra_op_parallelism_threads(8)
-
-class Training(tune.Trainable):
-
+class DatasetTraining(tune.Trainable):
     def setup(self, config):
-        self.timestep = 0
+        self.epochs = 0
         self.inference_duration = None
         self.inference_energy = None
         self.inference_batch = None
         self.inference_cores = None
 
-    def step(self):
-        self.timestep += self.timestep
+    def get_percentage(self, step):
+        if step >= 10:
+            return 1
+        return step*0.1
 
+    def step(self):
         ##### Setting training configurations #####
         n = self.config.get("n", 3)
-        print(n)
         model_depth = n * 6 + 2
         train_batch = self.config.get("train_batch", 128)
         utils.set_training_cores(self.config.get("train_cores", 4))
 
         #### Inference ###
-        #accResults = {}
-        #if self.inference_duration is None:
-        #    thread = Thread(target=InferenceServer.runSearch, args=[n, accResults])
-        #    thread.start()
+        inf_serv_results = {}
+        if self.inference_duration is None:
+            inf_serv_thread = Thread(target=InferenceServer.runSearch, args=[n, inf_serv_results])
+            inf_serv_thread.start()
 
         ##### Dataset #####
         (x_train, y_train), (x_test, y_test) = cifar10.load_data()
         shape = x_train.shape[1:]
         x_train = x_train.astype('float32') / 255
-        x_test = x_test.astype('float32') / 255
         train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
         train_dataset = train_dataset.shuffle(buffer_size=1024).batch(train_batch)
-        val_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
 
         ##### Model #####
         res = Resnet()
@@ -62,16 +58,20 @@ class Training(tune.Trainable):
 
         ##### Training #####
         train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
-        val_acc_metric = keras.metrics.SparseCategoricalAccuracy()
 
-        epochs = self.timestep + 1
+        epochs = 1
+        self.epochs += epochs
+        percentage = self.get_percentage(self.epochs)
+        total_images = 5000 * percentage
         training_start = time.time()
         start_energy = rapl.RAPLMonitor.sample()
         for epoch in range(epochs):
             print("Start of epoch %d" % (epoch,))
 
             for step, (x_batch_train, y_batch_train) in enumerate(train_dataset):
-                step_start = time.time()
+                if step*train_batch >= total_images:
+                    break
+
                 with tf.GradientTape() as tape:
                     logits = model(x_batch_train, training=True)  # Logits for this minibatch
                     loss_value = loss_fn(y_batch_train, logits)
@@ -83,7 +83,6 @@ class Training(tune.Trainable):
                 if step % 200 == 0:
                     print("Training loss (for one batch) at step %d: %.4f" % (step, float(loss_value)))
                     print("Seen so far: %s samples" % ((step + 1) * train_batch))
-                #break
         
         training_duration = time.time() - training_start
         end_energy = rapl.RAPLMonitor.sample()
@@ -93,26 +92,20 @@ class Training(tune.Trainable):
         training_accuracy = float(train_acc_metric.result())
         train_acc_metric.reset_states()
 
-        if os.path.isdir(directory_name):
-            shutil.rmtree(directory_name)
-        os.mkdir(directory_name)
         model.save(directory_name)
         
         ### Inference ###
         if self.inference_duration is None:
-            accResults = {}
-            InferenceServer.runSearch(n, accResults)
-            #thread.start()
-
-            #thread.join()
-            self.inference_duration = accResults['inference_duration']
-            self.inference_energy = accResults['inference_energy']
-            self.inference_cores = accResults['config']['inference_cores']
-            self.inference_batch = accResults['config']['inference_batch']
+            inf_serv_thread.join()
+            self.inference_duration = inf_serv_results['inference_duration']
+            self.inference_energy = inf_serv_results['inference_energy']
+            self.inference_cores = inf_serv_results['config']['inference_cores']
+            self.inference_batch = inf_serv_results['config']['inference_batch']
 
         runtime_ratio = (training_duration*self.inference_duration)/training_accuracy
         
         result = {
+            "epochs": self.epochs,
             "runtime_ratio": runtime_ratio,
             "training_accuracy": training_accuracy,
             "training_duration": training_duration,
@@ -129,7 +122,7 @@ class Training(tune.Trainable):
         path = os.path.join(checkpoint_dir, "checkpoint")
         with open(path, "w") as f:
             f.write(json.dumps({
-                "timestep": self.timestep,
+                "epochs": self.epochs,
                 "inference_duration": self.inference_duration,
                 "inference_energy": self.inference_energy,
                 "inference_batch": self.inference_batch,
@@ -140,7 +133,7 @@ class Training(tune.Trainable):
     def load_checkpoint(self, checkpoint_path):
         with open(checkpoint_path) as f:
             j = json.loads(f.read())
-            self.timestep = j["timestep"]
+            self.epochs = j["epochs"]
             self.inference_duration = j["inference_duration"]
             self.inference_energy = j["inference_energy"]
             self.inference_batch = j["inference_batch"]

@@ -5,7 +5,6 @@ from tensorflow import keras
 from pathlib import Path
 from utils import utils
 import tensorflow as tf
-
 from ray import tune
 import json
 import time

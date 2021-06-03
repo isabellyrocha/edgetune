@@ -1,4 +1,4 @@
-from workloads.cifar10resnet.EpochTraining import EpochTraining
+from workloads.cifar10resnet.InterleavedTraining import InterleavedTraining
 from ray.tune.schedulers.hb_bohb import HyperBandForBOHB
 from ray.tune.suggest.bohb import TuneBOHB
 from ray.tune import CLIReporter
@@ -20,6 +20,7 @@ def runSearch():
 
     bohb_hyperband = HyperBandForBOHB(
         time_attr="training_iteration",
+        #time_attr="timestep",
         max_t=100,
         reduction_factor=2)
 
@@ -35,8 +36,8 @@ def runSearch():
     reporter.add_metric_column("inference_batch")
 
     analysis = tune.run(
-        EpochTraining,
-        name="EdgeTuneV1[BOHB]",
+        InterleavedTraining,
+        name="EdgeTuneV3[BOHB]",
         config=config,
         scheduler=bohb_hyperband,
         search_alg=bohb_search,

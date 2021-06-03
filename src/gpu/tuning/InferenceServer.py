@@ -20,7 +20,8 @@ def runSearch(n, result):
     bohb_hyperband = HyperBandForBOHB(
         time_attr="training_iteration",
         max_t=1,
-        reduction_factor=2)
+        reduction_factor=2
+    )
 
     bohb_search = TuneBOHB(max_concurrent=1)
 
@@ -30,15 +31,17 @@ def runSearch(n, result):
         config=config,
         scheduler=bohb_hyperband,
         search_alg=bohb_search,
-        num_samples=4,
+        num_samples=1,
         stop={"training_iteration": 1},
         metric="inference_duration",
         mode="min",
         resources_per_trial={
             "cpu": 4,
             "gpu": 0
-        })
+        }
+    )
 
     for key in analysis.best_result.keys():
         result[key] = analysis.best_result[key]
+    
     return result
