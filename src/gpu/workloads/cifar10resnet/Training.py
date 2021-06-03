@@ -26,7 +26,7 @@ class Training(tune.Trainable):
         self.inference_cores = None
 
     def step(self):
-        self.timestep += 1
+        self.timestep += self.timestep
 
         ##### Setting training configurations #####
         n = self.config.get("n", 3)
@@ -36,10 +36,10 @@ class Training(tune.Trainable):
         utils.set_training_cores(self.config.get("train_cores", 4))
 
         #### Inference ###
-        accResults = {}
-        if self.inference_duration is None:
-            thread = Thread(target=InferenceServer.runSearch, args=[n, accResults])
-            thread.start()
+        #accResults = {}
+        #if self.inference_duration is None:
+        #    thread = Thread(target=InferenceServer.runSearch, args=[n, accResults])
+        #    thread.start()
 
         ##### Dataset #####
         (x_train, y_train), (x_test, y_test) = cifar10.load_data()
@@ -64,7 +64,7 @@ class Training(tune.Trainable):
         train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
         val_acc_metric = keras.metrics.SparseCategoricalAccuracy()
 
-        epochs = 1
+        epochs = self.timestep + 1
         training_start = time.time()
         start_energy = rapl.RAPLMonitor.sample()
         for epoch in range(epochs):
@@ -100,7 +100,11 @@ class Training(tune.Trainable):
         
         ### Inference ###
         if self.inference_duration is None:
-            thread.join()
+            accResults = {}
+            InferenceServer.runSearch(n, accResults)
+            #thread.start()
+
+            #thread.join()
             self.inference_duration = accResults['inference_duration']
             self.inference_energy = accResults['inference_energy']
             self.inference_cores = accResults['config']['inference_cores']
