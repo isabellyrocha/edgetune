@@ -36,7 +36,7 @@ def runSearch():
 
     analysis = tune.run(
         DatasetTraining,
-        name="EdgeTuneV1[BOHB]",
+        name="EdgeTuneV2[BOHB]",
         config=config,
         scheduler=bohb_hyperband,
         search_alg=bohb_search,

@@ -78,7 +78,6 @@ class EpochTraining(tune.Trainable):
                     print("Training loss (for one batch) at step %d: %.4f" % (step, float(loss_value)))
                     print("Seen so far: %s samples" % ((step + 1) * train_batch))
         
-        self.epochs += self.epochs
         training_duration = time.time() - training_start
         end_energy = rapl.RAPLMonitor.sample()
         diff = end_energy-start_energy

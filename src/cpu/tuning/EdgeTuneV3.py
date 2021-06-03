@@ -37,7 +37,7 @@ def runSearch():
 
     analysis = tune.run(
         InterleavedTraining,
-        name="EdgeTuneV1[BOHB]",
+        name="EdgeTuneV3[BOHB]",
         config=config,
         scheduler=bohb_hyperband,
         search_alg=bohb_search,
