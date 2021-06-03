@@ -13,11 +13,7 @@ import shutil
 import time
 import os
 
-#tf.config.threading.set_inter_op_parallelism_threads(8)
-#tf.config.threading.set_intra_op_parallelism_threads(8)
-
 class Training(tune.Trainable):
-
     def setup(self, config):
         self.timestep = 0
         self.inference_duration = None
@@ -30,25 +26,22 @@ class Training(tune.Trainable):
 
         ##### Setting training configurations #####
         n = self.config.get("n", 3)
-        print(n)
         model_depth = n * 6 + 2
         train_batch = self.config.get("train_batch", 128)
         utils.set_training_cores(self.config.get("train_cores", 4))
 
         #### Inference ###
-        accResults = {}
+        inf_serv_results = {}
         if self.inference_duration is None:
-            thread = Thread(target=InferenceServer.runSearch, args=[n, accResults])
-            thread.start()
+            inf_serv_thread = Thread(target=InferenceServer.runSearch, args=[n, inf_serv_results])
+            inf_serv_thread.start()
 
         ##### Dataset #####
         (x_train, y_train), (x_test, y_test) = cifar10.load_data()
         shape = x_train.shape[1:]
         x_train = x_train.astype('float32') / 255
-        x_test = x_test.astype('float32') / 255
         train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
         train_dataset = train_dataset.shuffle(buffer_size=1024).batch(train_batch)
-        val_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
 
         ##### Model #####
         res = Resnet()
@@ -62,9 +55,8 @@ class Training(tune.Trainable):
 
         ##### Training #####
         train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
-        val_acc_metric = keras.metrics.SparseCategoricalAccuracy()
 
-        epochs = self.timestep
+        epochs = self.timestep + 1
         training_start = time.time()
         start_energy = rapl.RAPLMonitor.sample()
         for epoch in range(epochs):
@@ -83,7 +75,6 @@ class Training(tune.Trainable):
                 if step % 200 == 0:
                     print("Training loss (for one batch) at step %d: %.4f" % (step, float(loss_value)))
                     print("Seen so far: %s samples" % ((step + 1) * train_batch))
-                #break
         
         training_duration = time.time() - training_start
         end_energy = rapl.RAPLMonitor.sample()
@@ -100,11 +91,11 @@ class Training(tune.Trainable):
         
         ### Inference ###
         if self.inference_duration is None:
-            thread.join()
-            self.inference_duration = accResults['inference_duration']
-            self.inference_energy = accResults['inference_energy']
-            self.inference_cores = accResults['config']['inference_cores']
-            self.inference_batch = accResults['config']['inference_batch']
+            inf_serv_thread.join()
+            self.inference_duration = inf_serv_results['inference_duration']
+            self.inference_energy = inf_serv_results['inference_energy']
+            self.inference_cores = inf_serv_results['config']['inference_cores']
+            self.inference_batch = inf_serv_results['config']['inference_batch']
 
         runtime_ratio = (training_duration*self.inference_duration)/training_accuracy
         
