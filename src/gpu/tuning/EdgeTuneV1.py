@@ -10,7 +10,7 @@ import os
 def runSearch():
     import ConfigSpace as CS  # noqa: F401
 
-    ray.init(num_cpus=8)
+    ray.init(num_cpus=4, num_gpus=1)
 
     config={
             "iterations": 100,
@@ -45,8 +45,8 @@ def runSearch():
         metric="runtime_ratio",
         mode="min",
         resources_per_trial={
-            "cpu": 4,
-            "gpu": 0
+            "cpu": 0,
+            "gpu": 1
         },
         progress_reporter=reporter)
 
