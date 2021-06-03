@@ -10,7 +10,7 @@ import os
 def runSearch():
     import ConfigSpace as CS  # noqa: F401
 
-    ray.init(num_cpus=4)
+    ray.init(num_cpus=8)
 
     config={
             "iterations": 100,
