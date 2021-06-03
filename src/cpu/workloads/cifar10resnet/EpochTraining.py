@@ -117,7 +117,7 @@ class EpochTraining(tune.Trainable):
         with open(path, "w") as f:
             f.write(json.dumps({
                 "steps": self.steps,
-                "epochs": epochs,
+                "epochs": self.epochs,
                 "inference_duration": self.inference_duration,
                 "inference_energy": self.inference_energy,
                 "inference_batch": self.inference_batch,
