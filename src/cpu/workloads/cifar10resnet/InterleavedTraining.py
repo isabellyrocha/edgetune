@@ -13,13 +13,18 @@ import shutil
 import time
 import os
 
-class Training(tune.Trainable):
+class InterleavedTraining(tune.Trainable):
     def setup(self, config):
         self.timestep = 0
         self.inference_duration = None
         self.inference_energy = None
         self.inference_batch = None
         self.inference_cores = None
+    
+    def get_percentage(self, step):
+        if step >= 10:
+            return 1
+        return step*0.1
 
     def step(self):
         self.timestep += self.timestep
@@ -57,13 +62,14 @@ class Training(tune.Trainable):
         train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
 
         epochs = self.timestep + 1
+        percentage = self.get_percentage(self.timestep)
+        total_images = 5000 * percentage
         training_start = time.time()
         start_energy = rapl.RAPLMonitor.sample()
         for epoch in range(epochs):
             print("Start of epoch %d" % (epoch,))
 
             for step, (x_batch_train, y_batch_train) in enumerate(train_dataset):
-                step_start = time.time()
                 with tf.GradientTape() as tape:
                     logits = model(x_batch_train, training=True)  # Logits for this minibatch
                     loss_value = loss_fn(y_batch_train, logits)
@@ -75,7 +81,9 @@ class Training(tune.Trainable):
                 if step % 200 == 0:
                     print("Training loss (for one batch) at step %d: %.4f" % (step, float(loss_value)))
                     print("Seen so far: %s samples" % ((step + 1) * train_batch))
-        
+                if step*train_batch >= total_images:
+                    break
+
         training_duration = time.time() - training_start
         end_energy = rapl.RAPLMonitor.sample()
         diff = end_energy-start_energy
