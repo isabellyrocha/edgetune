@@ -15,7 +15,7 @@ import os
 
 class DatasetTraining(tune.Trainable):
     def setup(self, config):
-        self.timestep = 0
+        self.epochs = 0
         self.inference_duration = None
         self.inference_energy = None
         self.inference_batch = None
@@ -27,8 +27,6 @@ class DatasetTraining(tune.Trainable):
         return step*0.1
 
     def step(self):
-        self.timestep += 1
-
         ##### Setting training configurations #####
         n = self.config.get("n", 3)
         model_depth = n * 6 + 2
@@ -62,7 +60,8 @@ class DatasetTraining(tune.Trainable):
         train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
 
         epochs = 1
-        percentage = self.get_percentage(self.timestep)
+        self.epochs += epochs
+        percentage = self.get_percentage(self.epochs)
         total_images = 5000 * percentage
         training_start = time.time()
         start_energy = rapl.RAPLMonitor.sample()
@@ -93,9 +92,6 @@ class DatasetTraining(tune.Trainable):
         training_accuracy = float(train_acc_metric.result())
         train_acc_metric.reset_states()
 
-        #if os.path.isdir(directory_name):
-        #    shutil.rmtree(directory_name)
-        #os.mkdir(directory_name)
         model.save(directory_name)
         
         ### Inference ###
@@ -109,6 +105,7 @@ class DatasetTraining(tune.Trainable):
         runtime_ratio = (training_duration*self.inference_duration)/training_accuracy
         
         result = {
+            "epochs": self.epochs,
             "runtime_ratio": runtime_ratio,
             "training_accuracy": training_accuracy,
             "training_duration": training_duration,
@@ -125,7 +122,7 @@ class DatasetTraining(tune.Trainable):
         path = os.path.join(checkpoint_dir, "checkpoint")
         with open(path, "w") as f:
             f.write(json.dumps({
-                "timestep": self.timestep,
+                "epochs": self.epochs,
                 "inference_duration": self.inference_duration,
                 "inference_energy": self.inference_energy,
                 "inference_batch": self.inference_batch,
@@ -136,7 +133,7 @@ class DatasetTraining(tune.Trainable):
     def load_checkpoint(self, checkpoint_path):
         with open(checkpoint_path) as f:
             j = json.loads(f.read())
-            self.timestep = j["timestep"]
+            self.epochs = j["epochs"]
             self.inference_duration = j["inference_duration"]
             self.inference_energy = j["inference_energy"]
             self.inference_batch = j["inference_batch"]

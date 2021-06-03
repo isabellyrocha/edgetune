@@ -15,14 +15,15 @@ import os
 
 class EpochTraining(tune.Trainable):
     def setup(self, config):
-        self.timestep = 0
+        self.steps = 0
+        self.epochs = 0
         self.inference_duration = None
         self.inference_energy = None
         self.inference_batch = None
         self.inference_cores = None
 
     def step(self):
-        self.timestep += self.timestep
+        self.steps += 1
 
         ##### Setting training configurations #####
         n = self.config.get("n", 3)
@@ -56,7 +57,8 @@ class EpochTraining(tune.Trainable):
         ##### Training #####
         train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
 
-        epochs = self.timestep + 1
+        epochs = self.steps * 2
+        self.epochs += epochs
         training_start = time.time()
         start_energy = rapl.RAPLMonitor.sample()
         for epoch in range(epochs):
@@ -76,6 +78,7 @@ class EpochTraining(tune.Trainable):
                     print("Training loss (for one batch) at step %d: %.4f" % (step, float(loss_value)))
                     print("Seen so far: %s samples" % ((step + 1) * train_batch))
         
+        self.epochs += self.epochs
         training_duration = time.time() - training_start
         end_energy = rapl.RAPLMonitor.sample()
         diff = end_energy-start_energy
@@ -84,11 +87,8 @@ class EpochTraining(tune.Trainable):
         training_accuracy = float(train_acc_metric.result())
         train_acc_metric.reset_states()
 
-        #if os.path.isdir(directory_name):
-        #    shutil.rmtree(directory_name)
-        #os.mkdir(directory_name)
         model.save(directory_name)
-        
+
         ### Inference ###
         if self.inference_duration is None:
             inf_serv_thread.join()
@@ -100,6 +100,7 @@ class EpochTraining(tune.Trainable):
         runtime_ratio = (training_duration*self.inference_duration)/training_accuracy
         
         result = {
+            "epochs": self.epochs,
             "runtime_ratio": runtime_ratio,
             "training_accuracy": training_accuracy,
             "training_duration": training_duration,
@@ -116,7 +117,8 @@ class EpochTraining(tune.Trainable):
         path = os.path.join(checkpoint_dir, "checkpoint")
         with open(path, "w") as f:
             f.write(json.dumps({
-                "timestep": self.timestep,
+                "steps": self.steps,
+                "epochs": epochs,
                 "inference_duration": self.inference_duration,
                 "inference_energy": self.inference_energy,
                 "inference_batch": self.inference_batch,
@@ -127,7 +129,8 @@ class EpochTraining(tune.Trainable):
     def load_checkpoint(self, checkpoint_path):
         with open(checkpoint_path) as f:
             j = json.loads(f.read())
-            self.timestep = j["timestep"]
+            self.steps = j["steps"]
+            self.epochs = j["epochs"]
             self.inference_duration = j["inference_duration"]
             self.inference_energy = j["inference_energy"]
             self.inference_batch = j["inference_batch"]

@@ -31,7 +31,7 @@ def runSearch(n, result):
         config=config,
         scheduler=bohb_hyperband,
         search_alg=bohb_search,
-        num_samples=4,
+        num_samples=1,
         stop={"training_iteration": 1},
         metric="inference_duration",
         mode="min",

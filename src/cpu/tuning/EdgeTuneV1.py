@@ -26,6 +26,7 @@ def runSearch():
     bohb_search = TuneBOHB(max_concurrent=1)
 
     reporter = CLIReporter(max_progress_rows=50)
+    reporter.add_metric_column("epochs")
     reporter.add_metric_column("training_accuracy")
     reporter.add_metric_column("training_duration")
     reporter.add_metric_column("inference_duration")
@@ -39,8 +40,8 @@ def runSearch():
         config=config,
         scheduler=bohb_hyperband,
         search_alg=bohb_search,
-        num_samples=10,
-        stop={"training_iteration": 100},
+        num_samples=2,
+        stop={"epochs": 200},
         metric="runtime_ratio",
         mode="min",
         resources_per_trial={
