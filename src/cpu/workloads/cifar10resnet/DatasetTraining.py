@@ -93,9 +93,9 @@ class DatasetTraining(tune.Trainable):
         training_accuracy = float(train_acc_metric.result())
         train_acc_metric.reset_states()
 
-        if os.path.isdir(directory_name):
-            shutil.rmtree(directory_name)
-        os.mkdir(directory_name)
+        #if os.path.isdir(directory_name):
+        #    shutil.rmtree(directory_name)
+        #os.mkdir(directory_name)
         model.save(directory_name)
         
         ### Inference ###

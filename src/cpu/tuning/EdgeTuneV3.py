@@ -26,6 +26,7 @@ def runSearch():
     bohb_search = TuneBOHB(max_concurrent=1)
 
     reporter = CLIReporter(max_progress_rows=50)
+    reporter.add_metric_column("timestep")
     reporter.add_metric_column("training_accuracy")
     reporter.add_metric_column("training_duration")
     reporter.add_metric_column("inference_duration")
