@@ -20,7 +20,6 @@ def runSearch():
 
     bohb_hyperband = HyperBandForBOHB(
         time_attr="training_iteration",
-        #time_attr="timestep",
         max_t=100,
         reduction_factor=2)
 
@@ -46,8 +45,8 @@ def runSearch():
         metric="runtime_ratio",
         mode="min",
         resources_per_trial={
-            "cpu": 4,
-            "gpu": 1
+            "cpu": 1,
+            "gpu": 8
         },
         progress_reporter=reporter)
 
