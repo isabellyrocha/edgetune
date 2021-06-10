@@ -41,12 +41,12 @@ def runSearch():
         scheduler=bohb_hyperband,
         search_alg=bohb_search,
         num_samples=10,
-        stop={"epochs": 200},
+        stop={"epochs": 10},
         metric="runtime_ratio",
         mode="min",
         resources_per_trial={
-            "cpu": 4,
-            "gpu": 0
+            "cpu": 1,
+            "gpu": 8
         },
         progress_reporter=reporter)
 

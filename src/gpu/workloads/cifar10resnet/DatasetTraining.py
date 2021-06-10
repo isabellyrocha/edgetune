@@ -35,9 +35,11 @@ class DatasetTraining(tune.Trainable):
 
         #### Inference ###
         inf_serv_results = {}
-        if self.inference_duration is None:
-            inf_serv_thread = Thread(target=InferenceServer.runSearch, args=[n, inf_serv_results])
-            inf_serv_thread.start()
+        inf_serv_results = InferenceServer.runSearch(n, inf_serv_results)
+        self.inference_duration = inf_serv_results['inference_duration']
+        self.inference_energy = inf_serv_results['inference_energy']
+        self.inference_cores = inf_serv_results['config']['inference_cores']
+        self.inference_batch = inf_serv_results['config']['inference_batch']
 
         ##### Dataset #####
         (x_train, y_train), (x_test, y_test) = cifar10.load_data()
@@ -94,14 +96,6 @@ class DatasetTraining(tune.Trainable):
 
         model.save(directory_name)
         
-        ### Inference ###
-        if self.inference_duration is None:
-            inf_serv_thread.join()
-            self.inference_duration = inf_serv_results['inference_duration']
-            self.inference_energy = inf_serv_results['inference_energy']
-            self.inference_cores = inf_serv_results['config']['inference_cores']
-            self.inference_batch = inf_serv_results['config']['inference_batch']
-
         runtime_ratio = (training_duration*self.inference_duration)/training_accuracy
         
         result = {
