@@ -1,6 +1,6 @@
 import workloads.cifar10resnet.lib.rapl.rapl as rapl
 from workloads.cifar10resnet.Resnet import Resnet
-from keras.datasets import cifar10,cifar100,mnist
+from keras.datasets import imdb
 from tensorflow import keras
 from pathlib import Path
 from utils import utils
@@ -22,9 +22,9 @@ class Inference(tune.Trainable):
         model_depth = n * 6 + 2
 
         ##### Dataset #####
-        (x_train, y_train), (x_test, y_test) = cifar100.load_data()
+        (x_train, y_train), (x_test, y_test) = imdb.load_data()
         shape = x_train.shape[1:]
-        x_test = x_test.astype('float32') / 255
+        #x_test = x_test.astype('float32') / 255
         val_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
 
         ##### Model #####

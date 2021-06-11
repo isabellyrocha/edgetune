@@ -1,5 +1,5 @@
 #from workloads.MyTrainableClass import MyTrainableClass
-from workloads.cifar10resnet.Inference import Inference
+from workloads.imdbresnet.Inference import Inference
 from ray.tune.schedulers.hb_bohb import HyperBandForBOHB
 from ray.tune.suggest.bohb import TuneBOHB
 from ray.tune import CLIReporter
