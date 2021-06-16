@@ -3,10 +3,8 @@ Run training, inference, or ONNX inference of torchvision models
 """
 
 import time
-
-print("init")
-
 import argparse
+import lib.rapl.rapl as rapl
 
 arguments = argparse.ArgumentParser()
 arguments.add_argument(
@@ -14,6 +12,10 @@ arguments.add_argument(
     default="resnet18",
     choices=[
         "resnet18",
+        "resnet34",
+        "resnet50",
+        "resnet101",
+        "resnet152",
         "alexnet",
         "vgg16",
         "squeezenet1_0",
@@ -28,6 +30,7 @@ arguments.add_argument("--function", default="train", choices=["train", "inferen
 arguments.add_argument("--time", default=1, type=int)
 arguments.add_argument("--batch", default=1024, type=int)
 arguments.add_argument("--size", default=256, type=int)
+arguments.add_argument("--gpus", default=1, type=int)
 arguments.add_argument("--baseline_mem", default=False, action="store_true")
 args = arguments.parse_args()
 
@@ -40,43 +43,49 @@ import onnx
 import onnxruntime
 from tqdm import tqdm
 
+#device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 # minimal training loop
 # training continues until args.time amount of seconds of the forward pass has been gathered
 def train(loader, model):
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
     model.train()
-    fwd_time = 0
     pbar = tqdm(total=args.time)
-    epochs = 1
+    epochs = 200
     correct = 0
     total = 0
     start = time.time()
+    start_energy = rapl.RAPLMonitor.sample()
     for epoch in range(epochs):
         for (images, target) in loader:
-            #start = time.time()
-
-            print("forward")  # workloads should print the phase they are in when starting them
+            images, target = images.to(device), target.to(device)
+            
+            # Forward Phase
             out = model(images)
             _, predicted = torch.max(out.data, 1)
             loss = criterion(out, target)
 
             elapsed = time.time() - start
-            fwd_time += elapsed
             pbar.update(elapsed)
 
-            print("backward")
+            # Backward Phase
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             
             total += target.size(0)
             correct += (predicted == target).sum().item()
-
-            print('Accuracy of the network on the 10000 test images: %d %%' % (100 * correct / total))
+            accuracy = (100 * correct / total)
+            print('[Epoch %d] %d seen samples with accuracy %d %%' % (epoch, total, accuracy))
+        if accuracy >= 80:
+            break
+    end_energy = rapl.RAPLMonitor.sample()
+    diff = end_energy-start_energy
+    training_energy = diff.energy('package-0')
+    print('Energy: %f' % training_energy)
     elapsed = time.time() - start
-    print('Elapsed time: %d' & elapsed)
-
+    print('Total elapsed time: %f' & elapsed)
 
 @torch.no_grad()  # disable gradients
 def inference(loader, model):
@@ -118,9 +127,16 @@ def onnx_inference(loader, ort_session):
                 return
 
 
+
+ids = ",".join([str(i) for i in range(args.gpus)])
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 if not args.baseline_mem:
     model = models.__dict__[args.model]()
-
+    gpu_ids = "cuda:" + ids
+    model = torch.nn.DataParallel(model, device_ids = list(range(args.gpus))) #list(range(args.gpus)))
+    model.to(device)
+    
 loader = torch.utils.data.DataLoader(
     datasets.CIFAR10(
         ".cache/", transform=T.Compose([T.Resize(args.size), T.CenterCrop(int(args.size * 224 / 256)), T.ToTensor()])
