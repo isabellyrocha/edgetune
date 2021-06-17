@@ -89,23 +89,23 @@ def train(loader, model):
 
 @torch.no_grad()  # disable gradients
 def inference(loader, model):
+    total_images= 0
     model.eval()
-    fwd_time = 0
-    pbar = tqdm(total=args.time)
-    while fwd_time < args.time:
-        for (images, target) in loader:
-            start = time.time()
+    start = time.time()
+    start_energy = rapl.RAPLMonitor.sample()
+    for (images, target) in loader:
+        out = model(images)
+        _, pred = torch.max(out.data, 1)
 
-            print("forward")
-            out = model(images)
-            _, pred = torch.max(out.data, 1)
-
+        total_images += len(images)
+        if total_images >= 1000:
             elapsed = time.time() - start
-            fwd_time += elapsed
-            pbar.update(elapsed)
-            if fwd_time > args.time:
-                return
-
+            print("Elapsed time: %f" % elapsed)
+            end_energy = rapl.RAPLMonitor.sample()
+            diff = end_energy-start_energy
+            training_energy = diff.energy('package-0')
+            print('Energy: %f' % training_energy)
+            break
 
 @torch.no_grad()
 def onnx_inference(loader, ort_session):
