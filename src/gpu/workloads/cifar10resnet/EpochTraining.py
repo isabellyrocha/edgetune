@@ -12,6 +12,9 @@ import json
 import shutil
 import time
 import os
+import torch
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class EpochTraining(tune.Trainable):
     def setup(self, config):
@@ -34,14 +37,16 @@ class EpochTraining(tune.Trainable):
         ### Inference ###
         if self.inference_duration is None:
             inf_serv_results = {}
-            InferenceServer.runSearch(n, inf_serv_results)
-            self.inference_duration = inf_serv_results['inference_duration']
-            self.inference_energy = inf_serv_results['inference_energy']
-            self.inference_cores = inf_serv_results['config']['inference_cores']
-            self.inference_batch = inf_serv_results['config']['inference_batch']
+        #    InferenceServer.runSearch(n, inf_serv_results)
+            self.inference_duration = 0#inf_serv_results['inference_duration']
+            self.inference_energy = 0#inf_serv_results['inference_energy']
+            self.inference_cores = 2#inf_serv_results['config']['inference_cores']
+            self.inference_batch = 2#inf_serv_results['config']['inference_batch']
 
         ##### Dataset #####
         (x_train, y_train), (x_test, y_test) = cifar10.load_data()
+        #x_train, y_train = x_train.to(device), y_train.to(device)
+        #x_test, y_test = x_test.to(device), y_test.to(device)
         shape = x_train.shape[1:]
         x_train = x_train.astype('float32') / 255
         train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
@@ -56,11 +61,12 @@ class EpochTraining(tune.Trainable):
 
         if os.path.isdir(directory_name):
             model = keras.models.load_model(directory_name)
+        model.to(device)
 
         ##### Training #####
         train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
 
-        epochs = self.steps * 2
+        epochs = 1
         self.epochs += epochs
         training_start = time.time()
         start_energy = rapl.RAPLMonitor.sample()

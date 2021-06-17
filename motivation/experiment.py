@@ -134,8 +134,8 @@ if not args.baseline_mem:
     model = models.__dict__[args.model]()
     model = torch.nn.DataParallel(model, device_ids = list(range(args.gpus)))
     model.to(device)
-    
-loader = torch.utils.data.DataLoader(
+
+loader = torch.utils.data.DataLoader(    
     datasets.CIFAR10(
         ".cache/", transform=T.Compose([T.Resize(args.size), T.CenterCrop(int(args.size * 224 / 256)), T.ToTensor()])
     ),
