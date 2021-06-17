@@ -200,7 +200,7 @@ class MyTrainableClass(tune.Trainable):
         val_acc_metric = keras.metrics.SparseCategoricalAccuracy()
         
         training_duration = 0
-        epochs = 1
+        epochs = 200
         for epoch in range(epochs):
             print("Start of epoch %d" % (epoch,))
             epoch_start = time.time()
@@ -305,14 +305,14 @@ if __name__ == "__main__":
         MyTrainableClass,
         name="hyperband_test",
         num_samples=1,
-        stop={"training_iteration": 10},
+        stop={"training_iteration": 200},
         resources_per_trial={
-            "cpu": 8,
-            "gpu": 0
+            "cpu": 2,
+            "gpu": 8
         },
         config={
-            "n": tune.grid_search([3, 5, 7]),
-            "train_cores": tune.grid_search([4, 8]),
+            "n": tune.grid_search([3, 5, 7, 9, 18, 27]),
+            "train_cores": tune.grid_search([4]),
             "inference_cores": tune.grid_search([8]),
             "train_memory": tune.grid_search([16]),
             "inference_memory": tune.grid_search([16]),
