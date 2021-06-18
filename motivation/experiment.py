@@ -26,7 +26,7 @@ arguments.add_argument(
         "mnasnet1_0",
     ],
 )
-arguments.add_argument("--function", default="train", choices=["train", "inference", "onnx_inference"])
+arguments.add_argument("--function", default="train", choices=["train", "train_epoch", "train_dataset", "train_multi", "inference", "onnx_inference"])
 arguments.add_argument("--time", default=1, type=int)
 arguments.add_argument("--batch", default=1024, type=int)
 arguments.add_argument("--size", default=256, type=int)
@@ -87,6 +87,160 @@ def train(loader, model):
     elapsed = time.time() - start
     print('Total elapsed time: %f' % elapsed)
 
+def train_epoch(loader, model):
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+    model.train()
+    pbar = tqdm(total=args.time)
+    epochs = 200
+    correct = 0
+    total = 0
+    start = time.time()
+    start_energy = rapl.RAPLMonitor.sample()
+    curr_epoch = 0
+    trial = 1
+    while curr_epoch < epochs:
+        trial_epochs = trial * 2
+        for epoch in range(trial_epochs):
+
+            for (images, target) in loader:
+                images, target = images.to(device), target.to(device)
+
+                # Forward Phase
+                out = model(images)
+                _, predicted = torch.max(out.data, 1)
+                loss = criterion(out, target)
+
+                elapsed = time.time() - start
+                pbar.update(elapsed)
+
+                # Backward Phase
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                total += target.size(0)
+                correct += (predicted == target).sum().item()
+                accuracy = (100 * correct / total)
+        curr_epoch += trial_epochs
+        print('[Trial %d][Epoch %d] %d seen samples with accuracy %d %%' % (trial, curr_epoch, total, accuracy))
+        trial += 1
+        if accuracy >= 80:
+            break
+    end_energy = rapl.RAPLMonitor.sample()
+    diff = end_energy-start_energy
+    training_energy = diff.energy('package-0')
+    print('Energy: %f' % training_energy)
+    elapsed = time.time() - start
+    print('Total elapsed time: %f' % elapsed)
+
+def get_percentage(step):
+    if step >= 10:
+        return 1
+    return step*0.1
+
+def train_dataset(loader, model):
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+    model.train()
+    pbar = tqdm(total=args.time)
+    epochs = 1000
+    correct = 0
+    total = 0
+    all_images = 50000
+    start = time.time()
+    start_energy = rapl.RAPLMonitor.sample()
+    for epoch in range(epochs):
+        percentage = get_percentage(epoch)
+        epoch_images = all_images * percentage
+        for (images, target) in loader:
+            images, target = images.to(device), target.to(device)
+
+            # Forward Phase
+            out = model(images)
+            _, predicted = torch.max(out.data, 1)
+            loss = criterion(out, target)
+
+            elapsed = time.time() - start
+            pbar.update(elapsed)
+
+            # Backward Phase
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            total += target.size(0)
+            correct += (predicted == target).sum().item()
+            accuracy = (100 * correct / total)
+
+            if total >= epoch_images:
+                break
+        print('[Trial %d][Epoch %d] %d seen samples with accuracy %d %%' % (epoch, epoch, total, accuracy))
+        if accuracy >= 80:
+            break
+    end_energy = rapl.RAPLMonitor.sample()
+    diff = end_energy-start_energy
+    training_energy = diff.energy('package-0')
+    print('Energy: %f' % training_energy)
+    elapsed = time.time() - start
+    print('Total elapsed time: %f' % elapsed)
+
+def train_multi(loader, model):
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+    model.train()
+    pbar = tqdm(total=args.time)
+    max_epochs = 1000
+    correct = 0
+    total = 0
+    all_images = 50000
+    start = time.time()
+    start_energy = rapl.RAPLMonitor.sample()
+    curr_epochs = 0
+    trials = 1
+    while curr_epochs < max_epochs:
+        trial_epochs = trials * 2
+
+        percentage = get_percentage(trials)
+        epoch_images = all_images * percentage
+
+        for epoch in range(trial_epochs):
+            for (images, target) in loader:
+                images, target = images.to(device), target.to(device)
+
+                # Forward Phase
+                out = model(images)
+                _, predicted = torch.max(out.data, 1)
+                loss = criterion(out, target)
+
+                elapsed = time.time() - start
+                pbar.update(elapsed)
+
+                # Backward Phase
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                total += target.size(0)
+                correct += (predicted == target).sum().item()
+                accuracy = (100 * correct / total)
+
+                if total >= epoch_images:
+                    break
+        curr_epochs += trial_epochs
+        print('[Trial %d][Epoch %d] %d seen samples with accuracy %d %%' % (trials, curr_epochs, total, accuracy))
+        trials += 1
+        if accuracy >= 80:
+            break
+
+    end_energy = rapl.RAPLMonitor.sample()
+    diff = end_energy-start_energy
+    training_energy = diff.energy('package-0')
+    print('Energy: %f' % training_energy)
+    elapsed = time.time() - start
+    print('Total elapsed time: %f' % elapsed)
+
+
 @torch.no_grad()  # disable gradients
 def inference(loader, model):
     total_images= 0
@@ -146,6 +300,12 @@ print ("Starting %s with batch %d using %d GPUs..." % (args.function, args.batch
 
 if args.function == "train":
     fn = train
+elif args.function == "train_epoch":
+    fn = train_epoch
+elif args.function == "train_dataset":
+    fn = train_dataset
+elif args.function == "train_multi":
+    fn = train_multi
 elif args.function == "inference":
     fn = inference
 elif args.function == "onnx_inference":
