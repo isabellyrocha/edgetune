@@ -1,4 +1,5 @@
-from workloads.cifar10resnet.InterleavedTraining import InterleavedTraining
+#from workloads.cifar10resnet.InterleavedTraining import InterleavedTraining
+from workloads.resnet.MultiFidelityTraining import MultiFidelityTraining
 from ray.tune.schedulers.hb_bohb import HyperBandForBOHB
 from ray.tune.suggest.bohb import TuneBOHB
 from ray.tune import CLIReporter
@@ -14,8 +15,9 @@ def runSearch():
 
     config={
             "iterations": 100,
-            "n": tune.choice([3, 5, 7]),
-            "train_batch": tune.choice([32, 64, 128, 256, 512])
+            "gpus": 8,
+            "model": tune.choice(["resnet18", "resnet34", "resnet50"]),
+            "train_batch": tune.choice([32, 256, 512])
     }
 
     bohb_hyperband = HyperBandForBOHB(
@@ -29,13 +31,15 @@ def runSearch():
     reporter.add_metric_column("epochs")
     reporter.add_metric_column("training_accuracy")
     reporter.add_metric_column("training_duration")
+    reporter.add_metric_column("training_energy")
     reporter.add_metric_column("inference_duration")
+    reporter.add_metric_column("inference_energy")
     reporter.add_metric_column("runtime_ratio")
     reporter.add_metric_column("inference_cores")
     reporter.add_metric_column("inference_batch")
 
     analysis = tune.run(
-        InterleavedTraining,
+        MultiFidelityTraining,
         name="EdgeTuneV3[BOHB]",
         config=config,
         scheduler=bohb_hyperband,

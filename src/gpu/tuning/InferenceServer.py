@@ -7,14 +7,14 @@ import json
 import ray
 import os
 
-def runSearch(n, result):
+def runSearch(model, result):
     import ConfigSpace as CS  # noqa: F401
 
     config={
             "iterations": 1,
-            "n": n,
+            "model": model,
             "inference_cores": tune.choice([1, 2, 4]),
-            "inference_batch": tune.choice([1, 2, 4, 8, 16, 32, 64])
+            "inference_batch": tune.choice([1, 10, 100])
     }
 
     bohb_hyperband = HyperBandForBOHB(
@@ -31,7 +31,7 @@ def runSearch(n, result):
         config=config,
         scheduler=bohb_hyperband,
         search_alg=bohb_search,
-        num_samples=10,
+        num_samples=1,
         stop={"training_iteration": 1},
         metric="inference_duration",
         mode="min",
