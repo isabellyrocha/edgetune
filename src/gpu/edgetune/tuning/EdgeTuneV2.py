@@ -1,4 +1,4 @@
-from workloads.cifar10resnet.DatasetTraining import DatasetTraining
+from workloads.resnet.DatasetTraining import DatasetTraining
 from ray.tune.schedulers.hb_bohb import HyperBandForBOHB
 from ray.tune.suggest.bohb import TuneBOHB
 from ray.tune import CLIReporter
@@ -14,8 +14,9 @@ def runSearch():
 
     config={
             "iterations": 100,
-            "n": tune.choice([3, 5, 7]),
-            "train_batch": tune.choice([32, 64, 128, 256, 512])
+            "gpus": 8,
+            "model": tune.choice(["resnet18", "resnet34", "resnet50"]),
+            "train_batch": tune.choice([32, 256, 512])
     }
 
     bohb_hyperband = HyperBandForBOHB(
@@ -30,6 +31,7 @@ def runSearch():
     reporter.add_metric_column("training_accuracy")
     reporter.add_metric_column("training_duration")
     reporter.add_metric_column("inference_duration")
+    reporter.add_metric_column("inference_energy")
     reporter.add_metric_column("runtime_ratio")
     reporter.add_metric_column("inference_cores")
     reporter.add_metric_column("inference_batch")
@@ -41,7 +43,7 @@ def runSearch():
         scheduler=bohb_hyperband,
         search_alg=bohb_search,
         num_samples=10,
-        stop={"epochs": 10},
+        stop={"epochs": 200},
         metric="runtime_ratio",
         mode="min",
         resources_per_trial={
