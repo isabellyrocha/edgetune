@@ -1,3 +1,4 @@
+from ray.tune.schedulers import HyperBandScheduler, AsyncHyperBandScheduler
 from workloads.resnet.EpochTraining import EpochTraining
 from ray.tune.schedulers.hb_bohb import HyperBandForBOHB
 from ray.tune.suggest.bohb import TuneBOHB
@@ -10,7 +11,7 @@ import os
 def runSearch():
     import ConfigSpace as CS  # noqa: F401
 
-    ray.init(num_cpus=8)
+    ray.init(num_cpus=8)#, num_gpus=8)
 
     config={
             "iterations": 100,
@@ -30,6 +31,7 @@ def runSearch():
     reporter.add_metric_column("epochs")
     reporter.add_metric_column("training_accuracy")
     reporter.add_metric_column("training_duration")
+    reporter.add_metric_column("training_energy")
     reporter.add_metric_column("inference_duration")
     reporter.add_metric_column("inference_energy")
     reporter.add_metric_column("runtime_ratio")
@@ -41,7 +43,6 @@ def runSearch():
         name="EdgeTuneV1[BOHB]",
         config=config,
         scheduler=bohb_hyperband,
-        search_alg=bohb_search,
         num_samples=10,
         stop={"epochs": 200},
         metric="runtime_ratio",
