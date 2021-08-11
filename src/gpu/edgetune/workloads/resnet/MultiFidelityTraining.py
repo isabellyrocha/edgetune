@@ -125,10 +125,12 @@ class MultiFidelityTraining(tune.Trainable):
         torch.save(model.state_dict(), directory_name)
 
         runtime_ratio = (training_duration*self.inference_duration)/training_accuracy
+        energy_ratio = (training_energy*self.inference_energy)/training_accuracy
         
         result = {
             "epochs": self.epochs,
             "runtime_ratio": runtime_ratio,
+            "energy_ratio": energy_ratio,
             "training_accuracy": training_accuracy,
             "training_duration": training_duration,
             "training_energy": training_energy,

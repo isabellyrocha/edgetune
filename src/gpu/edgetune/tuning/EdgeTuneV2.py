@@ -1,4 +1,4 @@
-from workloads.resnet.DatasetTraining import DatasetTraining
+from workloads.coco_deeplabv3.DatasetTraining import DatasetTraining
 from ray.tune.schedulers.hb_bohb import HyperBandForBOHB
 from ray.tune.suggest.bohb import TuneBOHB
 from ray.tune import CLIReporter
@@ -15,7 +15,8 @@ def runSearch():
     config={
             "iterations": 100,
             "gpus": 8,
-            "model": tune.choice(["resnet18", "resnet34", "resnet50"]),
+           "model": tune.choice(["deeplabv3_resnet50", "deeplabv3_resnet101", "deeplabv3_mobilenet_v3_large"]), 
+           #"model": tune.choice(["resnet18", "resnet34", "resnet50"]),
             "train_batch": tune.choice([32, 256, 512])
     }
 

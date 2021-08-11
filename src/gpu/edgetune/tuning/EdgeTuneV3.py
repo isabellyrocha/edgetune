@@ -7,7 +7,7 @@ import json
 import ray
 import os
 
-def runSearch():
+def runSearch(opt):
     import ConfigSpace as CS  # noqa: F401
 
     ray.init(num_cpus=8)
@@ -45,7 +45,7 @@ def runSearch():
         search_alg=bohb_search,
         num_samples=10,
         stop={"epochs": 200},
-        metric="runtime_ratio",
+        metric=opt,#"runtime_ratio",
         mode="min",
         resources_per_trial={
             "cpu": 1,

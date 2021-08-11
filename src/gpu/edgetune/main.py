@@ -10,10 +10,10 @@ if __name__ == "__main__":
     tuning_start = time.time()
     start_energy = rapl.RAPLMonitor.sample()
     
-    EdgeTuneV1.runSearch()
-    #EdgeTuneV2.runSearch()
-    #EdgeTuneV3.runSearch()
-    
+    #EdgeTuneV1.runSearch()
+    EdgeTuneV2.runSearch()
+    #EdgeTuneV3.runSearch("runtime_ratio")    
+
     tuning_duration = time.time() - tuning_start
     end_energy = rapl.RAPLMonitor.sample()
     diff = end_energy-start_energy

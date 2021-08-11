@@ -18,26 +18,27 @@ class Inference(tune.Trainable):
         self.timestep += 1
 
         ##### Setting training configurations #####
-        n = self.config.get("n", 3)
-        model_depth = n * 6 + 2
+        coco = CocoDataset(root = '%s/coco/train2017' % Path.home(),
+                           json ='%s/coco/annotations/captions_train2017.json' % Path.home(),
+                           transform=transforms.ToTensor())
 
-        ##### Dataset #####
-        (x_train, y_train), (x_test, y_test) = cifar10.load_data()
-        shape = x_train.shape[1:]
-        x_test = x_test.astype('float32') / 255
-        val_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
+        loader = torch.utils.data.DataLoader(
+            dataset=coco,
+            batch_size=args.batch,
+        )
 
-        ##### Model #####
-        res = Resnet()
-        model = res.resnet_v1(input_shape=shape, depth=model_depth)
-        optimizer = keras.optimizers.SGD(learning_rate=1e-3)
-        loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+
+        model = models.__dict__[self.config.get("model", "deeplabv3_resnet50")]()
+        model = torch.nn.DataParallel(model, device_ids = list(range(args.gpus)))
+
+
 
         ##### Inference #####
         val_batch_size = self.config.get("train_inference", 32)
         val_dataset = val_dataset.batch(val_batch_size)
         utils.set_inference_cores(self.config.get("inference_cores", 4))
-
+ 
+        '''
         inference_start = time.time()
         start_energy = rapl.RAPLMonitor.sample()
         for x_batch_val, y_batch_val in val_dataset:
@@ -46,6 +47,25 @@ class Inference(tune.Trainable):
         end_energy = rapl.RAPLMonitor.sample()
         diff = end_energy-start_energy
         inference_energy = diff.energy('package-0')
+        '''
+
+        total_images= 0
+        model.eval()
+        start = time.time()
+        #start_energy = rapl.RAPLMonitor.sample()
+        for (images, target) in loader:
+            out = model(images)
+            _, pred = torch.max(out.data, 1)
+
+            total_images += len(images)
+            if total_images >= val_batch_size:
+                inference_duration = time.time() - start
+                print("Elapsed time: %f" % inference_duration)
+                end_energy = rapl.RAPLMonitor.sample()
+                diff = end_energy-start_energy
+                inference_energy = diff.energy('package-0')
+                print('Energy: %f' % training_energy)
+                break
 
         result = {
             "inference_duration": inference_duration,
