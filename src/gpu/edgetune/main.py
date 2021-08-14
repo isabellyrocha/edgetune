@@ -1,7 +1,7 @@
 import lib.rapl.rapl as rapl
-from tuning import EdgeTuneV1
+#from tuning import EdgeTuneV1
 from tuning import EdgeTuneV2
-from tuning import EdgeTuneV3
+#from tuning import EdgeTuneV3
 #from tuning import EdgeTuneGrid
 from tuning import InferenceServer
 import time

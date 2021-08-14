@@ -19,7 +19,7 @@ def runSearch(model, result):
 
     bohb_hyperband = HyperBandForBOHB(
         time_attr="training_iteration",
-        max_t=1,
+        max_t=10,
         reduction_factor=2
     )
 
