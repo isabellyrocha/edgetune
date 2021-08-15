@@ -1,4 +1,4 @@
-from workloads.resnet.MultiFidelityTraining import MultiFidelityTraining
+from workloads.nlp.MultiBudgetTraining import MultiBudgetTraining
 from ray.tune.schedulers.hb_bohb import HyperBandForBOHB
 from ray.tune.suggest.bohb import TuneBOHB
 from ray.tune import CLIReporter

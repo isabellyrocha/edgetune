@@ -40,7 +40,7 @@ class TextClassificationModel(nn.Module):
             embedded = self.embedding(text, offsets)
             return self.fc(embedded)
 
-class DatasetTraining(tune.Trainable):
+class MultiBudgetTraining(tune.Trainable):
     def setup(self, config):
         self.steps = 0
         self.epochs = 0
@@ -156,8 +156,10 @@ class DatasetTraining(tune.Trainable):
         self.inference_cores = inf_serv_results['config']['inference_cores']
         self.inference_batch = inf_serv_results['config']['inference_batch']
         
-        epochs = 1
-        self.epochs += epochs # epoch
+
+        epochs = self.steps * 2
+        self.epochs += epochs
+
         criterion = torch.nn.CrossEntropyLoss()
         optimizer = torch.optim.SGD(model.parameters(), lr=LR)
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.1)

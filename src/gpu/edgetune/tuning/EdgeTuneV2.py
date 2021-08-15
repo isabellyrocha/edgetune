@@ -22,7 +22,7 @@ def runSearch():
 
     bohb_hyperband = HyperBandForBOHB(
         time_attr="training_iteration",
-        max_t=100,
+        max_t=10,
         reduction_factor=2)
 
     bohb_search = TuneBOHB(max_concurrent=1)
@@ -44,7 +44,7 @@ def runSearch():
         scheduler=bohb_hyperband,
         search_alg=bohb_search,
         num_samples=10,
-        stop={"epochs": 200},
+        stop={"epochs": 40},
         metric="runtime_ratio",
         mode="min",
         resources_per_trial={

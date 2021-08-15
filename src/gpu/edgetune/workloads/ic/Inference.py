@@ -1,5 +1,5 @@
-import workloads.cifar10resnet.lib.rapl.rapl as rapl
-from workloads.cifar10resnet.Resnet import Resnet
+import workloads.ic.lib.rapl.rapl as rapl
+from workloads.ic.Resnet import Resnet
 from keras.datasets import cifar10
 from tensorflow import keras
 from pathlib import Path
