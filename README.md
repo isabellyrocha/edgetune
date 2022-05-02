@@ -1,3 +1,5 @@
+# EdgeTune: Inference-Aware Hyperparameter Tuning
+
 ## Install pip3
 ```Shell
 $ sudo apt-get update
