@@ -1,5 +1,26 @@
 # EdgeTune: Inference-Aware Hyperparameter Tuning
 
+The results of EdgeTune have been presented at the ACM Middleware 2022 conference. If you use this software, please cite us:
+
+```
+@inproceedings{10.1145/3528535.3533273,
+author = {Rocha, Isabelly and Felber, Pascal and Schiavoni, Valerio and Chen, Lydia},
+title = {EdgeTune: Inference-Aware Multi-Parameter Tuning},
+year = {2022},
+isbn = {9781450393409},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3528535.3533273},
+doi = {10.1145/3528535.3533273},
+booktitle = {Proceedings of the 23rd Conference on 23rd ACM/IFIP International Middleware Conference},
+pages = {1–14},
+numpages = {14},
+keywords = {tuning, deep neural networks, training, inference},
+location = {Quebec, QC, Canada},
+series = {Middleware '22}
+}
+```
+
 ## Install pip3
 ```Shell
 $ sudo apt-get update
